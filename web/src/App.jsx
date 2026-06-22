@@ -8,6 +8,7 @@ import Groups from './pages/Groups.jsx'
 import NewCard from './pages/NewCard.jsx'
 import Passes from './pages/Passes.jsx'
 import QrCodes from './pages/QrCodes.jsx'
+import Templates from './pages/Templates.jsx'
 
 function Logo() {
   const [ok, setOk] = useState(true)
@@ -103,6 +104,7 @@ export default function App() {
           <NavLink to="/cards">Cards</NavLink>
           <NavLink to="/passes">Wallet passes</NavLink>
           <NavLink to="/qr">QR codes</NavLink>
+          <NavLink to="/templates">Templates</NavLink>
           <NavLink to="/groups">Groups</NavLink>
           <NavLink to="/new">New card</NavLink>
         </nav>
@@ -123,6 +125,7 @@ export default function App() {
           <Route path="/cards/:id" element={<CardDetail />} />
           <Route path="/passes" element={<Passes />} />
           <Route path="/qr" element={<QrCodes />} />
+          <Route path="/templates" element={<Templates />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/new" element={<NewCard />} />
         </Routes>

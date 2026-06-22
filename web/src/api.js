@@ -39,6 +39,8 @@ export const api = {
   deleteGroup: (id) => request(`/groups/${id}`, { method: 'DELETE' }),
 
   listQr: () => request('/qr'),
+  qrRaw: () => request('/qr/raw'),
   listPasses: () => request('/passes'),
   passesDebug: () => request('/passes/debug'),
+  listTemplates: () => request('/templates'),
 }

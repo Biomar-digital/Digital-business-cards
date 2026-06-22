@@ -60,13 +60,14 @@ function normalizePass(x) {
 // Extrae el array de pases. La API responde { msg, data: { passes: [...] } },
 // pero contemplamos también variantes al nivel superior.
 function asList(data) {
+  const keys = (o) => o.cards ?? o.passes ?? o.templates ?? o.dynamicPasses ?? o.groups ?? o.users ?? o.items ?? o.results
   if (Array.isArray(data)) return data
   if (data && typeof data === 'object') {
-    const direct = data.cards ?? data.passes ?? data.items ?? data.results
+    const direct = keys(data)
     if (Array.isArray(direct)) return direct
     const d = data.data
     if (d && typeof d === 'object') {
-      const nested = d.passes ?? d.cards ?? d.items ?? d.results
+      const nested = keys(d)
       if (Array.isArray(nested)) return nested
     }
   }
@@ -111,7 +112,38 @@ export async function listPasses(cfg) {
     const totalPages = paginationOf(data)?.totalPages ?? 1
     if (list.length === 0 || page >= totalPages) break
   }
-  return all.map(normalizePass)
+  // Ocultamos las definiciones de plantilla (filas con placeholders como
+  // "{name}"/"{email}") para mostrar solo los pases reales de personas.
+  const isTemplate = (p) =>
+    [p.name, p.email, p.title].some((v) => typeof v === 'string' && /\{[^}]+\}/.test(v))
+  return all.map(normalizePass).filter((p) => !isTemplate(p))
+}
+
+function normalizeTemplate(x) {
+  const td = x.templateData ?? x.template ?? {}
+  return {
+    id: x.dynamicPassId ?? x._id ?? x.id ?? null,
+    name: x.name ?? td.cardTitle ?? '—',
+    groupId: x.groupId ?? x.group_id ?? null,
+    cardTitle: td.cardTitle ?? x.cardTitle ?? null,
+    createdAt: x.createdAt ?? x.created_at ?? null,
+    raw: x,
+  }
+}
+
+/** Lista las plantillas dinámicas (GET /api/dynamicPass/templates). */
+export async function listTemplates(cfg) {
+  if (!canReadLive(cfg)) {
+    return [{ id: 'tpl_demo', name: 'BioMar Dynamic Card', groupId: 'grp_demo', cardTitle: 'BioMar', createdAt: '2026-05-01', raw: {} }]
+  }
+  const data = await apiFetch(cfg, '/dynamicPass/templates')
+  return (asList(data) || []).map(normalizeTemplate)
+}
+
+/** Respuesta cruda de plantillas (para calibrar). */
+export async function listTemplatesRaw(cfg) {
+  if (!canReadLive(cfg)) return { note: 'Sin API key' }
+  return apiFetch(cfg, '/dynamicPass/templates')
 }
 
 /** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */

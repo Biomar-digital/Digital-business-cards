@@ -40,6 +40,9 @@ function normalizeQr(x) {
   return {
     id: x.id ?? x.qr_id ?? x.code_id ?? null,
     name: x.name ?? x.qr_code_name ?? x.title ?? '—',
+    company:
+      x.company ?? x.organization ?? x.org ?? x.fields?.company ??
+      x.contact?.company ?? x.vcard?.company ?? x.data?.company ?? null,
     scans: x.number_of_scans ?? x.scans ?? x.scan_count ?? x.visits ?? 0,
     shortUrl,
     targetUrl: x.target_url ?? x.targetUrl ?? x.url ?? x.destination ?? null,
