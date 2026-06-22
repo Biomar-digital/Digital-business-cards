@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 
+const ALL = ''
+
 export default function People() {
   const [people, setPeople] = useState(null)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
-  const [company, setCompany] = useState('')
+  const [company, setCompany] = useState(ALL)
+  const [country, setCountry] = useState(ALL)
+  const [group, setGroup] = useState(ALL)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -21,7 +25,6 @@ export default function People() {
       const idx = await api.indexPeople()
       let remaining = idx.pending
       let done = 0
-      // Bucle de lotes hasta que no quede ninguno pendiente.
       for (let i = 0; i < 50; i++) {
         const r = await api.syncPeople()
         done += r.synced
@@ -38,18 +41,45 @@ export default function People() {
     }
   }
 
-  const companies = useMemo(() => {
+  // Opciones de cada filtro, con conteo, respetando los OTROS filtros activos.
+  const facet = (field, ignore) => {
     const m = new Map()
     for (const p of people || []) {
-      const key = p.company || '—'
+      if (field !== 'company' && company && (p.company || '—') !== company) continue
+      if (field !== 'country' && country && (p.country || '—') !== country) continue
+      if (field !== 'group' && group && (p.folder_name || p.folder_id || '—') !== group) continue
+      const key =
+        field === 'company' ? (p.company || '—')
+          : field === 'country' ? (p.country || '—')
+            : (p.folder_name || p.folder_id || '—')
       m.set(key, (m.get(key) || 0) + 1)
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1])
-  }, [people])
+  }
+  const companies = useMemo(() => facet('company'), [people, country, group])
+  const countries = useMemo(() => facet('country'), [people, company, group])
+  const groups = useMemo(() => facet('group'), [people, company, country])
 
   const list = (people || [])
-    .filter((p) => company === '' || (p.company || '—') === company)
-    .filter((p) => !q || `${p.full_name} ${p.email} ${p.company}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((p) => company === ALL || (p.company || '—') === company)
+    .filter((p) => country === ALL || (p.country || '—') === country)
+    .filter((p) => group === ALL || (p.folder_name || p.folder_id || '—') === group)
+    .filter((p) => !q || `${p.full_name} ${p.email} ${p.company} ${p.job}`.toLowerCase().includes(q.toLowerCase()))
+
+  const clear = () => { setCompany(ALL); setCountry(ALL); setGroup(ALL); setQ('') }
+  const filtered = company || country || group || q
+
+  const Select = ({ label, value, onChange, options }) => (
+    <div className="field" style={{ margin: 0, minWidth: 200 }}>
+      <label style={{ marginBottom: 4 }}>{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value={ALL}>All</option>
+        {options.map(([name, count]) => (
+          <option key={name} value={name}>{name} ({count})</option>
+        ))}
+      </select>
+    </div>
+  )
 
   return (
     <>
@@ -65,23 +95,18 @@ export default function People() {
         </div>
       </div>
       <p className="muted" style={{ marginTop: -10 }}>
-        Contacts extracted from the vCard QR codes, grouped by company. {msg && <b>{msg}</b>}
+        Contacts extracted from the vCard QR codes. {msg && <b>{msg}</b>}
       </p>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 14, flexWrap: 'wrap' }}>
-        <div className="field" style={{ margin: 0, minWidth: 240 }}>
-          <label style={{ marginBottom: 4 }}>Company</label>
-          <select value={company} onChange={(e) => setCompany(e.target.value)}>
-            <option value="">All companies</option>
-            {companies.map(([name, count]) => (
-              <option key={name} value={name}>{name} ({count})</option>
-            ))}
-          </select>
-        </div>
+        <Select label="Company" value={company} onChange={setCompany} options={companies} />
+        <Select label="Country" value={country} onChange={setCountry} options={countries} />
+        <Select label="Group (folder)" value={group} onChange={setGroup} options={groups} />
         <div className="field" style={{ margin: 0, minWidth: 200 }}>
           <label style={{ marginBottom: 4 }}>Search</label>
-          <input placeholder="name, email, company…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input placeholder="name, email, job…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        {filtered ? <button className="btn secondary" onClick={clear} style={{ height: 40 }}>Clear</button> : null}
       </div>
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
@@ -89,10 +114,14 @@ export default function People() {
         <div className="empty">No contacts yet. Click <b>Sync from QR</b> to extract them from your vCard QR codes.</div>
       )}
 
+      {people && people.length > 0 && (
+        <p className="muted" style={{ marginTop: 0 }}>Showing <b>{list.length}</b> of {people.length}</p>
+      )}
+
       {list.length > 0 && (
         <table>
           <thead>
-            <tr><th>Name</th><th>Company</th><th>Job</th><th>Email</th><th>Phone</th><th>Country</th><th>Scans</th></tr>
+            <tr><th>Name</th><th>Company</th><th>Job</th><th>Email</th><th>Phone</th><th>Country</th><th>Group</th><th>Scans</th></tr>
           </thead>
           <tbody>
             {list.map((p) => (
@@ -103,6 +132,7 @@ export default function People() {
                 <td className="muted">{p.email || '—'}</td>
                 <td className="muted">{p.mobile || p.phone || '—'}</td>
                 <td className="muted">{p.country || '—'}</td>
+                <td className="muted">{p.folder_name || p.folder_id || '—'}</td>
                 <td><b>{p.total_scans ?? 0}</b></td>
               </tr>
             ))}
