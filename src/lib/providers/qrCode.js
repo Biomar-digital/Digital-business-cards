@@ -165,23 +165,36 @@ export async function inspectVcardPage(cfg) {
   if (!vcard?.short_url) return { note: 'No se encontró short_url de vCard' }
 
   const out = { qrId: vcard.id, name: vcard.title, shortUrl: vcard.short_url }
-  try {
-    const res = await fetch(vcard.short_url, {
-      redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,application/json' },
-    })
-    const text = await res.text()
-    out.finalUrl = res.url
-    out.status = res.status
-    out.contentType = res.headers.get('content-type')
-    out.hasVcard = text.includes('BEGIN:VCARD')
-    out.vcfLinks = [...text.matchAll(/https?:\/\/[^"'\s)]+\.vcf[^"'\s)]*/gi)].map((m) => m[0]).slice(0, 5)
-    // Posibles datos embebidos (Next.js / JSON con el contacto)
-    const nextData = text.match(/__NEXT_DATA__[^>]*>([^<]+)</)
-    out.embeddedJsonSnippet = nextData ? nextData[1].slice(0, 1500) : null
-    out.snippet = text.slice(0, 2000)
-  } catch (e) {
-    out.error = String(e.message ?? e)
+  const meta = (html, prop) => (html.match(new RegExp(`${prop}"\\s+content="([^"]*)"`)) || [])[1] || null
+
+  for (const url of [vcard.short_url, `${vcard.short_url}.vcf`, `${vcard.short_url}/vcard`]) {
+    try {
+      const res = await fetch(url, {
+        redirect: 'follow',
+        headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,text/vcard,*/*' },
+      })
+      const text = await res.text()
+      const entry = {
+        status: res.status,
+        contentType: res.headers.get('content-type'),
+        hasVcard: text.includes('BEGIN:VCARD'),
+        ogTitle: meta(text, 'og:title'),
+        ogDescription: meta(text, 'og:description'),
+        emails: [...new Set(text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) || [])].slice(0, 8),
+        tels: [...new Set(text.match(/tel:[+\d\s()\-.]+/gi) || [])].slice(0, 8),
+        vcfLinks: [...new Set([...text.matchAll(/[^"'\s]+\.vcf[^"'\s]*/gi)].map((m) => m[0]))].slice(0, 5),
+      }
+      // Si es una vCard cruda, devolvemos su texto completo.
+      if (entry.hasVcard) {
+        entry.vcard = text.slice(text.indexOf('BEGIN:VCARD'), text.indexOf('END:VCARD') + 9)
+      } else {
+        entry.bodySnippet = text.slice(2000, 6000)
+      }
+      out[url] = entry
+      if (entry.hasVcard || entry.emails.length || entry.tels.length) break
+    } catch (e) {
+      out[url] = String(e.message ?? e)
+    }
   }
   return out
 }
