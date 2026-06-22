@@ -69,8 +69,18 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company)`,
 ]
 
+// Columnas añadidas después (ALTER no es idempotente: se ignora si ya existe).
+const ALTERS = [
+  'ALTER TABLE contacts ADD COLUMN pass_id TEXT',
+  'ALTER TABLE contacts ADD COLUMN pass_url TEXT',
+  'ALTER TABLE contacts ADD COLUMN pass_synced_at TEXT',
+]
+
 export async function ensureSchema(DB) {
   if (ready || !DB) return
   await DB.batch(STATEMENTS.map((sql) => DB.prepare(sql)))
+  for (const sql of ALTERS) {
+    try { await DB.prepare(sql).run() } catch { /* la columna ya existe */ }
+  }
   ready = true
 }
