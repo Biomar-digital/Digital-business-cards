@@ -16,7 +16,7 @@ function Logo() {
       {ok ? (
         <img
           className="brand-logo"
-          src="/biomar-logo.png"
+          src="/biomar-logo.svg"
           alt="BioMar"
           onError={() => setOk(false)}
         />
