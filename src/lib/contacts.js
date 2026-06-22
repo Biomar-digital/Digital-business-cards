@@ -1,3 +1,4 @@
+import { createPassForContact, getTemplateDesign } from './providers/addToWallet.js'
 import { getVcardLanding, listQrCodes } from './providers/qrCode.js'
 
 // Directorio de personas: contactos extraídos de las vCards de qr-code-generator,
@@ -86,4 +87,43 @@ export async function syncBatch(cfg, DB, { limit = 40 } = {}) {
 export async function resetSync(DB) {
   await DB.prepare('UPDATE contacts SET synced_at=NULL').run()
   return { ok: true }
+}
+
+/**
+ * Crea wallet passes en lote para las personas indicadas (qrIds) que aún no
+ * tienen pase. Cada pase lleva el barcode apuntando al vCard QR de la persona.
+ * Procesa hasta `limit` por llamada (tope de subrequests del Worker).
+ */
+export async function createPassesBatch(cfg, DB, qrIds, { limit = 25 } = {}) {
+  if (!Array.isArray(qrIds) || qrIds.length === 0) return { created: 0, remaining: 0, errors: [] }
+  const ids = qrIds.map(String)
+  const ph = ids.map(() => '?').join(',')
+
+  const { results: rows } = await DB.prepare(
+    `SELECT * FROM contacts WHERE qr_id IN (${ph}) AND pass_id IS NULL LIMIT ?`,
+  )
+    .bind(...ids, limit)
+    .all()
+
+  const design = await getTemplateDesign(cfg)
+  let created = 0
+  const errors = []
+  for (const c of rows) {
+    try {
+      const r = await createPassForContact(cfg, c, design)
+      await DB.prepare("UPDATE contacts SET pass_id=?, pass_url=?, pass_synced_at=datetime('now') WHERE qr_id=?")
+        .bind(r.passId, r.passUrl, String(c.qr_id))
+        .run()
+      created++
+    } catch (e) {
+      errors.push({ name: c.full_name, error: String(e.message ?? e).slice(0, 200) })
+    }
+  }
+
+  const { results: rem } = await DB.prepare(
+    `SELECT COUNT(*) AS n FROM contacts WHERE qr_id IN (${ph}) AND pass_id IS NULL`,
+  )
+    .bind(...ids)
+    .all()
+  return { created, remaining: rem[0]?.n ?? 0, errors: errors.slice(0, 5) }
 }

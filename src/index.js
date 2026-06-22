@@ -111,6 +111,10 @@ api.get('/people', async (c) => c.json(await contacts.listContacts(c.env.DB)))
 api.post('/people/index', async (c) => c.json(await contacts.indexPeople(getConfig(c.env), c.env.DB)))
 api.post('/people/sync', async (c) => c.json(await contacts.syncBatch(getConfig(c.env), c.env.DB)))
 api.post('/people/reset', async (c) => c.json(await contacts.resetSync(c.env.DB)))
+api.post('/people/passes', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return c.json(await contacts.createPassesBatch(getConfig(c.env), c.env.DB, body.qrIds || []))
+})
 
 // ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──
 api.post('/test/create-card', async (c) => {

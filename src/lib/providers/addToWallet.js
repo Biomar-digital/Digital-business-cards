@@ -353,3 +353,56 @@ export async function deleteTestPass(cfg, id) {
   }
   return { ok: false }
 }
+
+/** Diseño (logo/hero/colores) tomado de una plantilla existente, para reusar. */
+export async function getTemplateDesign(cfg) {
+  try {
+    const data = await apiFetch(cfg, cfg.addToWallet.listPath)
+    const cardsList = asList(data) || []
+    const t = cardsList.find((c) => c.logoUrl && c.heroImage) || cardsList[0] || {}
+    return {
+      logoUrl: t.logoUrl, heroImage: t.heroImage,
+      googleHeroImage: t.googleHeroImage, appleHeroImage: t.appleHeroImage,
+      hexBackgroundColor: t.hexBackgroundColor, appleFontColor: t.appleFontColor,
+    }
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Crea un wallet pass para un contacto (persona), con el barcode apuntando a su
+ * vCard QR (short_url). Reusa el diseño de la plantilla BioMar.
+ */
+export async function createPassForContact(cfg, contact, design = {}) {
+  const phone = contact.mobile || contact.phone
+  const text = []
+  if (contact.email) text.push({ id: 'r1start', header: 'Email', body: contact.email })
+  if (phone) text.push({ id: 'r1end', header: 'Phone', body: phone })
+  const links = []
+  if (phone) links.push({ id: 'r1', description: 'Call', uri: `tel:${phone}` })
+  if (contact.email) links.push({ id: 'r2', description: 'Email', uri: `mailto:${contact.email}` })
+  if (contact.website) {
+    const w = String(contact.website)
+    links.push({ id: 'r3', description: 'Website', uri: w.startsWith('http') ? w : `https://${w}` })
+  }
+  const payload = {
+    cardTitle: contact.company || 'BioMar',
+    header: contact.full_name || 'BioMar',
+    subheader: contact.job || undefined,
+    logoUrl: design.logoUrl || 'https://s3.amazonaws.com/i.addtowallet.co/addtowallet-9cd5f4fb-de93-4c47-b733-7cff3b3ff8b9',
+    heroImage: design.heroImage || 'https://s3.amazonaws.com/i.addtowallet.co/addtowallet-9b25762b-12d8-4571-9030-0999e440626c',
+    googleHeroImage: design.googleHeroImage || design.heroImage,
+    appleHeroImage: design.appleHeroImage || design.heroImage,
+    hexBackgroundColor: design.hexBackgroundColor || '#1f3e77',
+    appleFontColor: design.appleFontColor || '#ffffff',
+    barcodeType: 'QR_CODE',
+    barcodeValue: contact.short_url || 'https://www.biomar.com',
+    barcodeAltText: 'Scan to add contact',
+    textModulesData: text,
+    linksModuleData: links,
+  }
+  const data = await apiFetch(cfg, '/card/create', { method: 'POST', body: payload })
+  const id = data.cardId ?? data.id ?? data._id ?? null
+  return { passId: id, passUrl: data.shareUrl ?? data.url ?? (id ? `https://app.addtowallet.co/card/${id}` : null) }
+}
