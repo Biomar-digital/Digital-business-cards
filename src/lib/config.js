@@ -10,8 +10,9 @@ export function getConfig(env) {
 
     addToWallet: {
       apiKey: env.ADDTOWALLET_API_KEY || '',
-      // Host real de la API: api.addtowallet.co (las docs viven en app.addtowallet.co).
-      baseUrl: env.ADDTOWALLET_BASE_URL || 'https://api.addtowallet.co/api',
+      // Host real de la API: app.addtowallet.co (el "api." del curl de las docs
+      // es un typo; ese host da 530/DNS error). Endpoint: /api/card/get.
+      baseUrl: env.ADDTOWALLET_BASE_URL || 'https://app.addtowallet.co/api',
       templateId: env.ADDTOWALLET_TEMPLATE_ID || '',
       // "Get Passes" según docs: GET /api/card/get con cabecera `apikey: <key>`.
       listPath: env.ADDTOWALLET_LIST_PATH || '/card/get',
