@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 
 export default function QrCodes() {
@@ -6,13 +6,29 @@ export default function QrCodes() {
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
   const [peopleOnly, setPeopleOnly] = useState(true)
+  const [folder, setFolder] = useState('')
 
   useEffect(() => {
     api.listQr().then(setQrs).catch((e) => setError(String(e.message || e)))
   }, [])
 
+  // Carpetas (grupos) presentes, con conteo.
+  const folders = useMemo(() => {
+    const m = new Map()
+    for (const x of qrs || []) {
+      if (peopleOnly && !x.isPerson) continue
+      const key = String(x.folder ?? '')
+      const label = x.folderName || `Folder ${x.folder ?? '—'}`
+      const e = m.get(key) || { key, label, count: 0 }
+      e.count++
+      m.set(key, e)
+    }
+    return [...m.values()].sort((a, b) => b.count - a.count)
+  }, [qrs, peopleOnly])
+
   const list = (qrs || [])
     .filter((x) => !peopleOnly || x.isPerson)
+    .filter((x) => folder === '' || String(x.folder ?? '') === folder)
     .filter((x) => !q || (x.name || '').toLowerCase().includes(q.toLowerCase()))
 
   return (
@@ -27,12 +43,24 @@ export default function QrCodes() {
         />
       </div>
       <p className="muted" style={{ marginTop: -10 }}>
-        Dynamic QR codes from qr-code-generator. vCard codes are people; Website codes are links.
+        Dynamic QR codes from qr-code-generator, grouped by folder. vCard codes are people.
       </p>
-      <label className="checkbox" style={{ marginBottom: 14 }}>
-        <input type="checkbox" checked={peopleOnly} onChange={(e) => setPeopleOnly(e.target.checked)} />
-        Only people (vCard)
-      </label>
+
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+        <div className="field" style={{ margin: 0, minWidth: 220 }}>
+          <label style={{ marginBottom: 4 }}>Group (folder)</label>
+          <select value={folder} onChange={(e) => setFolder(e.target.value)}>
+            <option value="">All groups</option>
+            {folders.map((f) => (
+              <option key={f.key} value={f.key}>{f.label} ({f.count})</option>
+            ))}
+          </select>
+        </div>
+        <label className="checkbox" style={{ marginTop: 18 }}>
+          <input type="checkbox" checked={peopleOnly} onChange={(e) => setPeopleOnly(e.target.checked)} />
+          Only people (vCard)
+        </label>
+      </div>
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
       {!qrs && !error && <div className="empty">Loading…</div>}
@@ -42,7 +70,7 @@ export default function QrCodes() {
         <table>
           <thead>
             <tr>
-              <th>QR</th><th>Name</th><th>Type</th><th>Folder</th><th>Scans</th><th>Short URL</th><th>Created</th>
+              <th>QR</th><th>Name</th><th>Type</th><th>Group (folder)</th><th>Scans</th><th>Short URL</th><th>Created</th>
             </tr>
           </thead>
           <tbody>
@@ -51,7 +79,7 @@ export default function QrCodes() {
                 <td>{x.imageUrl ? <img className="qr-thumb" src={x.imageUrl} alt="" /> : '—'}</td>
                 <td>{x.name}</td>
                 <td className="muted">{x.type || '—'}</td>
-                <td className="muted">{x.folder ?? '—'}</td>
+                <td className="muted">{x.folderName || (x.folder != null ? `Folder ${x.folder}` : '—')}</td>
                 <td><b>{x.scans}</b>{x.uniqueScans != null ? <span className="muted"> ({x.uniqueScans})</span> : null}</td>
                 <td>{x.shortUrl ? <a href={x.shortUrl} target="_blank" rel="noreferrer">{x.shortUrl}</a> : '—'}</td>
                 <td className="muted">{x.createdAt ? String(x.createdAt).slice(0, 10) : '—'}</td>

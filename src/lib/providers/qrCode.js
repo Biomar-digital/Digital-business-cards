@@ -58,18 +58,32 @@ function extractList(data) {
   return data.codes ?? data.data ?? data.items ?? data.results ?? data.qr_codes ?? []
 }
 
-/** Lista TODOS los QR de la cuenta. */
+/** Lista las carpetas (grupos) de la cuenta. Devuelve [{id, name}]. */
+export async function listFolders(cfg) {
+  if (!canReadLive(cfg)) return [{ id: 1, name: 'Default' }]
+  try {
+    const data = await apiFetch(cfg, '/folders')
+    const list = Array.isArray(data) ? data : (data.folders ?? data.data ?? data.items ?? data.results ?? [])
+    return list.map((f) => ({ id: f.id ?? f.folder_id ?? null, name: f.name ?? f.title ?? String(f.id ?? '') }))
+  } catch {
+    return []
+  }
+}
+
+/** Lista TODOS los QR de la cuenta, con el nombre de su carpeta (grupo). */
 export async function listQrCodes(cfg) {
   if (!canReadLive(cfg)) {
     // Datos simulados (personas) para ver el panel sin API key.
     return [
-      { id: 'qr_demo1', name: 'Ada Lovelace — tarjeta', scans: 42, shortUrl: 'https://qrco.de/ada123', targetUrl: 'https://app.addtowallet.co/p/pass_demo1', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fada123', createdAt: '2026-06-01', raw: {} },
-      { id: 'qr_demo2', name: 'Grace Hopper — tarjeta', scans: 17, shortUrl: 'https://qrco.de/grace45', targetUrl: 'https://app.addtowallet.co/p/pass_demo2', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fgrace45', createdAt: '2026-06-10', raw: {} },
+      { id: 'qr_demo1', name: 'Ada Lovelace', type: 'vCard Plus', isPerson: true, folder: 1, folderName: 'Default', scans: 42, uniqueScans: 30, shortUrl: 'https://qrco.de/ada123', targetUrl: '', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fada123', createdAt: '2026-06-01', raw: {} },
+      { id: 'qr_demo2', name: 'Grace Hopper', type: 'vCard Plus', isPerson: true, folder: 1, folderName: 'Default', scans: 17, uniqueScans: 12, shortUrl: 'https://qrco.de/grace45', targetUrl: '', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fgrace45', createdAt: '2026-06-10', raw: {} },
     ]
   }
-  // La API pagina (≈20 por página). Recorremos páginas y deduplicamos por id;
-  // si una página no aporta ids nuevos (o viene vacía) paramos. Así traemos
-  // TODOS los QR aunque el nombre exacto del parámetro de página varíe.
+
+  const folders = await listFolders(cfg)
+  const folderName = new Map(folders.map((f) => [String(f.id), f.name]))
+
+  // La API pagina (≈20 por página). Recorremos páginas y deduplicamos por id.
   const seen = new Set()
   const out = []
   for (let page = 1; page <= 100; page++) {
@@ -87,6 +101,9 @@ export async function listQrCodes(cfg) {
       if (!seen.has(key)) { seen.add(key); out.push(it); added++ }
     }
     if (items.length === 0 || added === 0) break
+  }
+  for (const it of out) {
+    it.folderName = it.folder != null ? (folderName.get(String(it.folder)) ?? null) : null
   }
   return out
 }
