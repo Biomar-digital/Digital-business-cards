@@ -27,6 +27,49 @@ async function apiFetch(cfg, path, { method = 'GET', body } = {}) {
   return data
 }
 
+// ¿Podemos leer datos reales? Sí en cuanto haya API key (lectura segura),
+// aunque PROVIDER_MODE siga en mock.
+function canReadLive(cfg) {
+  return Boolean(cfg.addToWallet.apiKey)
+}
+
+// Normaliza un pase de la API a la forma del panel (probando varios nombres).
+function normalizePass(x) {
+  return {
+    id: x.id ?? x.passId ?? x.serialNumber ?? null,
+    name: x.name ?? x.holderName ?? x.title ?? x.fields?.name ?? '—',
+    template: x.templateId ?? x.template ?? x.designId ?? null,
+    installUrl: x.url ?? x.passUrl ?? x.installUrl ?? x.link ?? null,
+    email: x.email ?? x.fields?.email ?? null,
+    createdAt: x.created ?? x.created_at ?? x.createdAt ?? x.date ?? null,
+    raw: x,
+  }
+}
+
+function extractList(data) {
+  if (Array.isArray(data)) return data
+  return data.passes ?? data.data ?? data.items ?? data.results ?? []
+}
+
+/** Lista TODOS los pases de la cuenta. */
+export async function listPasses(cfg) {
+  if (!canReadLive(cfg)) {
+    return [
+      { id: 'pass_demo1', name: 'Ada Lovelace', template: cfg.addToWallet.templateId, installUrl: 'https://app.addtowallet.co/p/pass_demo1', email: 'ada@biomar.digital', createdAt: '2026-06-01', raw: {} },
+      { id: 'pass_demo2', name: 'Grace Hopper', template: cfg.addToWallet.templateId, installUrl: 'https://app.addtowallet.co/p/pass_demo2', email: 'grace@biomar.digital', createdAt: '2026-06-10', raw: {} },
+    ]
+  }
+  // ⚙️ AJUSTAR: ruta de listado según tus docs
+  const data = await apiFetch(cfg, '/passes')
+  return extractList(data).map(normalizePass)
+}
+
+/** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */
+export async function listPassesRaw(cfg) {
+  if (!canReadLive(cfg)) return { note: 'Sin API key: no hay datos reales' }
+  return apiFetch(cfg, '/passes')
+}
+
 /** Crea un pase wallet a partir de los datos de una tarjeta. */
 export async function createPass(cfg, card) {
   if (!cfg.isLive) {

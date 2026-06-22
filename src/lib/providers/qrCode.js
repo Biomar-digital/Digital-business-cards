@@ -1,18 +1,28 @@
 import { nanoid } from 'nanoid'
 
 /**
- * Cliente de qr-code-generator (dominio corto qrco.de) para Cloudflare Workers.
- * Las docs están tras Cloudflare; ajusta los marcados con  // ⚙️ AJUSTAR.
+ * Cliente de qr-code-generator (dominio corto qrco.de).
+ *
+ * Auth: la API documenta `access-token` como parámetro de query (no header).
+ * Las rutas/campos exactos están tras Cloudflare; los puntos a confirmar con
+ * tus docs están marcados con  // ⚙️ AJUSTAR. El listado mapea de forma
+ * defensiva varios nombres de campo posibles y, si algo no encaja, usa el
+ * endpoint /raw del panel para ver la respuesta real y afinar el mapeo.
  */
 
+// ¿Podemos leer datos reales? Sí en cuanto haya API key (la lectura es de solo
+// lectura y segura), aunque PROVIDER_MODE siga en mock.
+function canReadLive(cfg) {
+  return Boolean(cfg.qrCode.apiKey)
+}
+
 async function apiFetch(cfg, path, { method = 'GET', body } = {}) {
-  const res = await fetch(`${cfg.qrCode.baseUrl}${path}`, {
+  const sep = path.includes('?') ? '&' : '?'
+  // ⚙️ AJUSTAR: algunos planes aceptan también header Authorization
+  const url = `${cfg.qrCode.baseUrl}${path}${sep}access-token=${encodeURIComponent(cfg.qrCode.apiKey)}`
+  const res = await fetch(url, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      // ⚙️ AJUSTAR: algunos planes usan ?access-token= en la URL en vez de header
-      Authorization: `Bearer ${cfg.qrCode.apiKey}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   })
   const text = await res.text()
@@ -23,10 +33,48 @@ async function apiFetch(cfg, path, { method = 'GET', body } = {}) {
   return data
 }
 
-/**
- * Crea un QR DINÁMICO cuyo destino es la URL del pase.
- * Dinámico = podemos cambiar el destino luego sin reimprimir el QR.
- */
+// Normaliza un QR de la API a la forma que usa el panel, probando varios
+// nombres de campo habituales.
+function normalizeQr(x) {
+  const shortUrl = x.short_url ?? x.shortUrl ?? x.qrcode_url ?? x.qr_url ?? null
+  return {
+    id: x.id ?? x.qr_id ?? x.code_id ?? null,
+    name: x.name ?? x.qr_code_name ?? x.title ?? '—',
+    scans: x.number_of_scans ?? x.scans ?? x.scan_count ?? x.visits ?? 0,
+    shortUrl,
+    targetUrl: x.target_url ?? x.targetUrl ?? x.url ?? x.destination ?? null,
+    imageUrl: x.qr_code ?? x.image_url ?? x.png ?? x.image ?? null,
+    createdAt: x.created ?? x.created_at ?? x.createdAt ?? x.date ?? null,
+    raw: x,
+  }
+}
+
+function extractList(data) {
+  if (Array.isArray(data)) return data
+  return data.codes ?? data.data ?? data.items ?? data.results ?? data.qr_codes ?? []
+}
+
+/** Lista TODOS los QR de la cuenta. */
+export async function listQrCodes(cfg) {
+  if (!canReadLive(cfg)) {
+    // Datos simulados (personas) para ver el panel sin API key.
+    return [
+      { id: 'qr_demo1', name: 'Ada Lovelace — tarjeta', scans: 42, shortUrl: 'https://qrco.de/ada123', targetUrl: 'https://app.addtowallet.co/p/pass_demo1', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fada123', createdAt: '2026-06-01', raw: {} },
+      { id: 'qr_demo2', name: 'Grace Hopper — tarjeta', scans: 17, shortUrl: 'https://qrco.de/grace45', targetUrl: 'https://app.addtowallet.co/p/pass_demo2', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fgrace45', createdAt: '2026-06-10', raw: {} },
+    ]
+  }
+  // ⚙️ AJUSTAR: ruta de listado según tus docs
+  const data = await apiFetch(cfg, '/codes')
+  return extractList(data).map(normalizeQr)
+}
+
+/** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */
+export async function listQrCodesRaw(cfg) {
+  if (!canReadLive(cfg)) return { note: 'Sin API key: no hay datos reales' }
+  return apiFetch(cfg, '/codes')
+}
+
+/** Crea un QR DINÁMICO cuyo destino es la URL del pase. */
 export async function createDynamicQr(cfg, { name, targetUrl }) {
   if (!cfg.isLive) {
     const code = nanoid(6)
@@ -37,33 +85,24 @@ export async function createDynamicQr(cfg, { name, targetUrl }) {
       imageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shortUrl)}`,
     }
   }
-
-  // ⚙️ AJUSTAR: ruta y campos según docs premium. `qr_code_template` reutiliza
-  // tu diseño de QR existente; el nombre exacto del campo puede variar.
-  const data = await apiFetch(cfg, '/qr-codes', {
+  // ⚙️ AJUSTAR: ruta y campos de creación según tus docs
+  const data = await apiFetch(cfg, '/codes', {
     method: 'POST',
     body: {
       name,
-      type: 'dynamic',
       target_url: targetUrl,
       ...(cfg.qrCode.templateId ? { qr_code_template: cfg.qrCode.templateId } : {}),
     },
   })
-  return {
-    qrId: data.id ?? data.qrId,
-    shortUrl: data.short_url ?? data.shortUrl,
-    imageUrl: data.image_url ?? data.imageUrl ?? data.png,
-  }
+  const n = normalizeQr(data.code ?? data.data ?? data)
+  return { qrId: n.id, shortUrl: n.shortUrl, imageUrl: n.imageUrl }
 }
 
 /** Cambia el destino de un QR dinámico ya existente. */
 export async function updateQrTarget(cfg, qrId, targetUrl) {
   if (!cfg.isLive) return { ok: true, mocked: true }
   // ⚙️ AJUSTAR
-  return apiFetch(cfg, `/qr-codes/${qrId}`, {
-    method: 'PUT',
-    body: { target_url: targetUrl },
-  })
+  return apiFetch(cfg, `/codes/${qrId}`, { method: 'PUT', body: { target_url: targetUrl } })
 }
 
 /** Analítica de escaneos del QR. */
@@ -72,10 +111,14 @@ export async function getQrAnalytics(cfg, qrId) {
     return { scans: Math.floor(Math.random() * 80), unique: Math.floor(Math.random() * 50) }
   }
   // ⚙️ AJUSTAR
-  return apiFetch(cfg, `/qr-codes/${qrId}/analytics`)
+  const data = await apiFetch(cfg, `/codes/${qrId}/analytics`)
+  return {
+    scans: data.number_of_scans ?? data.scans ?? 0,
+    unique: data.unique_scans ?? data.unique ?? 0,
+  }
 }
 
 export async function deleteQr(cfg, qrId) {
   if (!cfg.isLive) return { ok: true, mocked: true }
-  return apiFetch(cfg, `/qr-codes/${qrId}`, { method: 'DELETE' })
+  return apiFetch(cfg, `/codes/${qrId}`, { method: 'DELETE' })
 }

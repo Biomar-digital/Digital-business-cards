@@ -79,6 +79,9 @@ input, textarea, select {
 .checkbox { display: flex; align-items: center; gap: 8px; }
 .checkbox input { width: auto; }
 
+.qr-thumb { width: 44px; height: 44px; border-radius: 6px; background: white; padding: 3px; display: block; }
+.ellipsis { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .login { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
 .login-card { width: 100%; max-width: 360px; }
 .sidebar { display: flex; flex-direction: column; }

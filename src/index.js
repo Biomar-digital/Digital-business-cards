@@ -4,6 +4,8 @@ import { nanoid } from 'nanoid'
 import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
 import { ensureSchema } from './lib/db.js'
+import * as wallet from './lib/providers/addToWallet.js'
+import * as qr from './lib/providers/qrCode.js'
 
 // ── API (todo lo que cuelga de /api) ──
 const api = new Hono().basePath('/api')
@@ -85,6 +87,15 @@ api.delete('/groups/:id', async (c) => {
   await c.env.DB.prepare('DELETE FROM groups WHERE id = ?').bind(c.req.param('id')).run()
   return c.body(null, 204)
 })
+
+// ── QR de la cuenta (qr-code-generator) ──
+api.get('/qr', async (c) => c.json(await qr.listQrCodes(getConfig(c.env))))
+// Respuesta cruda, para calibrar el mapeo contra la API real.
+api.get('/qr/raw', async (c) => c.json(await qr.listQrCodesRaw(getConfig(c.env))))
+
+// ── Pases de la cuenta (AddToWallet) ──
+api.get('/passes', async (c) => c.json(await wallet.listPasses(getConfig(c.env))))
+api.get('/passes/raw', async (c) => c.json(await wallet.listPassesRaw(getConfig(c.env))))
 
 api.onError((err, c) => {
   console.error(err)

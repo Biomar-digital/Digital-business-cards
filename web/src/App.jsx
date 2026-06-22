@@ -6,6 +6,8 @@ import Cards from './pages/Cards.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Groups from './pages/Groups.jsx'
 import NewCard from './pages/NewCard.jsx'
+import Passes from './pages/Passes.jsx'
+import QrCodes from './pages/QrCodes.jsx'
 
 function Login({ onAuthed }) {
   const [token, setT] = useState(getToken())
@@ -81,6 +83,8 @@ export default function App() {
         <nav className="nav">
           <NavLink to="/" end>📊 Dashboard</NavLink>
           <NavLink to="/cards">💳 Tarjetas</NavLink>
+          <NavLink to="/passes">🪪 Pases AddToWallet</NavLink>
+          <NavLink to="/qr">🔳 QR</NavLink>
           <NavLink to="/groups">👥 Grupos</NavLink>
           <NavLink to="/new">➕ Nueva tarjeta</NavLink>
         </nav>
@@ -99,6 +103,8 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/cards" element={<Cards />} />
           <Route path="/cards/:id" element={<CardDetail />} />
+          <Route path="/passes" element={<Passes />} />
+          <Route path="/qr" element={<QrCodes />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/new" element={<NewCard />} />
         </Routes>

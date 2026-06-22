@@ -37,4 +37,7 @@ export const api = {
   listGroups: () => request('/groups'),
   createGroup: (payload) => request('/groups', { method: 'POST', body: payload }),
   deleteGroup: (id) => request(`/groups/${id}`, { method: 'DELETE' }),
+
+  listQr: () => request('/qr'),
+  listPasses: () => request('/passes'),
 }
