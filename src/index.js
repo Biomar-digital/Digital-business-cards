@@ -95,6 +95,8 @@ api.delete('/groups/:id', async (c) => {
 api.get('/qr', async (c) => c.json(await qr.listQrCodes(getConfig(c.env))))
 // Respuesta cruda, para calibrar el mapeo contra la API real.
 api.get('/qr/raw', async (c) => c.json(await qr.listQrCodesRaw(getConfig(c.env))))
+// Detalle de una vCard de ejemplo (para descubrir todos los campos).
+api.get('/qr/detail-sample', async (c) => c.json(await qr.sampleVcardDetail(getConfig(c.env))))
 
 // ── Pases de la cuenta (AddToWallet) ──
 api.get('/passes', async (c) => c.json(await wallet.listPasses(getConfig(c.env))))

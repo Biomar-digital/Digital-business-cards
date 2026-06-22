@@ -7,6 +7,7 @@ export default function QrCodes() {
   const [q, setQ] = useState('')
   const [peopleOnly, setPeopleOnly] = useState(true)
   const [folder, setFolder] = useState('')
+  const [detail, setDetail] = useState(null)
 
   useEffect(() => {
     api.listQr().then(setQrs).catch((e) => setError(String(e.message || e)))
@@ -60,7 +61,23 @@ export default function QrCodes() {
           <input type="checkbox" checked={peopleOnly} onChange={(e) => setPeopleOnly(e.target.checked)} />
           Only people (vCard)
         </label>
+        <button
+          className="btn secondary"
+          style={{ marginTop: 18 }}
+          onClick={() => api.qrDetailSample().then(setDetail).catch((e) => setDetail({ error: String(e.message || e) }))}
+        >
+          Inspect one vCard detail
+        </button>
       </div>
+
+      {detail && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <b>vCard detail (to map all fields like company, email, phone):</b>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, maxHeight: 320, overflow: 'auto', marginBottom: 0 }}>
+            {JSON.stringify(detail, null, 2)}
+          </pre>
+        </div>
+      )}
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
       {!qrs && !error && <div className="empty">Loading…</div>}
