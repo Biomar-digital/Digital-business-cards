@@ -47,10 +47,19 @@ export async function createDynamicQr({ name, targetUrl }) {
     }
   }
 
-  // ⚙️ AJUSTAR: ruta y campos según docs premium
+  // ⚙️ AJUSTAR: ruta y campos según docs premium. `qr_code_template` reutiliza
+  // tu diseño de QR existente; el nombre exacto del campo puede variar según tu
+  // plan (revisa tus docs y ajusta solo esta línea si hace falta).
   const data = await apiFetch('/qr-codes', {
     method: 'POST',
-    body: { name, type: 'dynamic', target_url: targetUrl },
+    body: {
+      name,
+      type: 'dynamic',
+      target_url: targetUrl,
+      ...(config.qrCode.templateId
+        ? { qr_code_template: config.qrCode.templateId }
+        : {}),
+    },
   })
   return {
     qrId: data.id ?? data.qrId,

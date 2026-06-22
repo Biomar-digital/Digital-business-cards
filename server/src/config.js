@@ -22,6 +22,9 @@ export const config = {
     apiKey: read('QRCODE_API_KEY', ''),
     baseUrl: read('QRCODE_BASE_URL', 'https://api.qr-code-generator.com/v1'),
     shortDomain: read('QRCODE_SHORT_DOMAIN', 'qrco.de'),
+    // Plantilla/diseño de QR a reutilizar (para que los QR nuevos salgan con
+    // el mismo estilo que los que ya tienes creados). Vacío = diseño por defecto.
+    templateId: read('QRCODE_TEMPLATE_ID', ''),
   },
 
   email: {
