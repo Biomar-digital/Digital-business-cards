@@ -17,7 +17,7 @@ binding = "ASSETS"
 # ── Variables NO secretas ──
 [vars]
 PROVIDER_MODE = "mock"            # mock | live
-ADDTOWALLET_BASE_URL = "https://app.addtowallet.co/api"
+ADDTOWALLET_BASE_URL = "https://api.addtowallet.co/api"
 ADDTOWALLET_TEMPLATE_ID = "6a0edd8fbd302f5983d094e4"
 QRCODE_BASE_URL = "https://api.qr-code-generator.com/v1"
 QRCODE_SHORT_DOMAIN = "qrco.de"

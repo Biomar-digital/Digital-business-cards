@@ -37,17 +37,19 @@ export default function Passes() {
         <table>
           <thead>
             <tr>
-              <th>Name</th><th>Email</th><th>Template</th><th>Install</th><th>Created</th>
+              <th>Name</th><th>Job title</th><th>Business</th><th>Email</th><th>Phone</th><th>Status</th><th>Created</th>
             </tr>
           </thead>
           <tbody>
             {list.map((x) => (
               <tr key={x.id}>
                 <td>{x.name}</td>
+                <td className="muted">{x.title || '—'}</td>
+                <td className="muted">{x.business || '—'}</td>
                 <td className="muted">{x.email || '—'}</td>
-                <td className="muted ellipsis">{x.template || '—'}</td>
-                <td>{x.installUrl ? <a href={x.installUrl} target="_blank" rel="noreferrer">Open pass</a> : '—'}</td>
-                <td className="muted">{x.createdAt || '—'}</td>
+                <td className="muted">{x.phone || '—'}</td>
+                <td>{x.status ? <span className={`badge ${x.status === 'ACTIVE' ? 'active' : 'draft'}`}>{x.status.toLowerCase()}</span> : '—'}</td>
+                <td className="muted">{x.createdAt ? String(x.createdAt).slice(0, 10) : '—'}</td>
               </tr>
             ))}
           </tbody>

@@ -9,14 +9,9 @@ import { nanoid } from 'nanoid'
  * Ajusta SOLO los marcados con  // ⚙️ AJUSTAR  con las docs de tu cuenta.
  */
 
-// Cabeceras de auth según el estilo configurado (se descubre con /api/_discover).
+// Cabeceras de auth. AddToWallet usa `apikey: <key>` (ver docs Get/Create Pass).
 function authHeaders(cfg) {
-  const key = cfg.addToWallet.apiKey
-  switch (cfg.addToWallet.authStyle) {
-    case 'x-api-key': return { 'x-api-key': key }
-    case 'api-key': return { 'api-key': key }
-    default: return { Authorization: `Bearer ${key}` }
-  }
+  return headersForStyle(cfg, cfg.addToWallet.authStyle)
 }
 
 async function apiFetch(cfg, path, { method = 'GET', body } = {}) {
@@ -39,22 +34,32 @@ function canReadLive(cfg) {
   return Boolean(cfg.addToWallet.apiKey)
 }
 
-// Normaliza un pase de la API a la forma del panel (probando varios nombres).
+// Normaliza un pase ("card") de AddToWallet a la forma del panel, según el
+// shape real de GET /api/card/get.
 function normalizePass(x) {
+  const text = Array.isArray(x.textModulesData) ? x.textModulesData : []
+  const links = Array.isArray(x.linksModuleData) ? x.linksModuleData : []
+  const textBody = (h) => text.find((t) => String(t.header || '').toLowerCase() === h)?.body
+  const linkValue = (prefix) => {
+    const l = links.find((l) => String(l.uri || '').toLowerCase().startsWith(prefix))
+    return l ? l.uri.slice(prefix.length) : null
+  }
   return {
-    id: x.id ?? x.passId ?? x.serialNumber ?? null,
-    name: x.name ?? x.holderName ?? x.title ?? x.fields?.name ?? '—',
-    template: x.templateId ?? x.template ?? x.designId ?? null,
-    installUrl: x.url ?? x.passUrl ?? x.installUrl ?? x.link ?? null,
-    email: x.email ?? x.fields?.email ?? null,
-    createdAt: x.created ?? x.created_at ?? x.createdAt ?? x.date ?? null,
+    id: x._id ?? x.id ?? null,
+    name: x.header ?? x.name ?? '—',
+    title: x.subheader ?? null,
+    business: x.cardTitle ?? null,
+    email: textBody('email') ?? linkValue('mailto:') ?? null,
+    phone: textBody('phone') ?? linkValue('tel:') ?? null,
+    status: x.stateType ?? null,
+    createdAt: x.createdAt ?? x.created_at ?? x.created ?? null,
     raw: x,
   }
 }
 
 function extractList(data) {
   if (Array.isArray(data)) return data
-  return data.passes ?? data.data ?? data.items ?? data.results ?? []
+  return data.cards ?? data.passes ?? data.data ?? data.items ?? data.results ?? []
 }
 
 // Devuelve el array de pases si la respuesta TIENE forma de lista, o null si no
@@ -62,7 +67,7 @@ function extractList(data) {
 function asList(data) {
   if (Array.isArray(data)) return data
   if (data && typeof data === 'object') {
-    const v = data.passes ?? data.data ?? data.items ?? data.results
+    const v = data.cards ?? data.passes ?? data.data ?? data.items ?? data.results
     if (Array.isArray(v)) return v
   }
   return null
@@ -70,6 +75,7 @@ function asList(data) {
 
 function headersForStyle(cfg, style) {
   const key = cfg.addToWallet.apiKey
+  if (style === 'apikey') return { apikey: key }
   if (style === 'x-api-key') return { 'x-api-key': key }
   if (style === 'api-key') return { 'api-key': key }
   return { Authorization: `Bearer ${key}` }
@@ -201,22 +207,35 @@ export async function createPass(cfg, card) {
     return { passId, passUrl: `https://app.addtowallet.co/p/${passId}` }
   }
 
-  // ⚙️ AJUSTAR: ruta y mapeo de campos según docs premium
+  // POST /api/card/create (cabecera apikey). Campos según docs Create Pass.
+  const links = []
+  if (card.phone) links.push({ id: 'r1', description: 'Call us', uri: `tel:${card.phone}` })
+  if (card.email) links.push({ id: 'r2', description: 'Email us', uri: `mailto:${card.email}` })
+  if (card.website) links.push({ id: 'r3', description: 'Website', uri: card.website })
+
+  const text = []
+  if (card.phone) text.push({ id: 'r1start', header: 'Phone', body: card.phone })
+  if (card.email) text.push({ id: 'r1end', header: 'Email', body: card.email })
+
   const payload = {
-    templateId: cfg.addToWallet.templateId || undefined,
-    fields: {
-      name: card.full_name,
-      title: card.job_title,
-      company: card.company,
-      email: card.email,
-      phone: card.phone,
-      website: card.website,
-    },
+    cardTitle: card.company || 'BioMar',
+    header: card.full_name,
+    subheader: card.job_title || undefined,
+    hexBackgroundColor: '#1b3c74',
+    appleFontColor: '#FFFFFF',
+    barcodeType: 'QR_CODE',
+    linksModuleData: links,
+    textModulesData: text,
+    // ⚙️ logoUrl/heroImage son obligatorios en la API. Si tu cuenta los toma
+    // de la plantilla no hace falta; si la API los exige, añade aquí las URLs.
   }
-  const data = await apiFetch(cfg, '/passes', { method: 'POST', body: payload })
+  const data = await apiFetch(cfg, '/card/create', { method: 'POST', body: payload })
+  const id = data.id ?? data._id ?? data.cardId ?? data.card?._id
   return {
-    passId: data.id ?? data.passId,
-    passUrl: data.url ?? data.passUrl ?? data.installUrl,
+    passId: id,
+    passUrl:
+      data.url ?? data.passUrl ?? data.shareUrl ?? data.cardUrl ??
+      (id ? `https://app.addtowallet.co/c/${id}` : null),
   }
 }
 
