@@ -81,59 +81,62 @@ function headersForStyle(cfg, style) {
   return { Authorization: `Bearer ${key}` }
 }
 
-// Combo (ruta + estilo de auth) que funcionó, cacheado por isolate.
-let cachedCombo = null
+// URL+estilo que funcionó, cacheado por isolate.
+let cachedHit = null
 
-async function tryList(cfg, path, style) {
-  const res = await fetch(`${cfg.addToWallet.baseUrl}${path}`, {
+async function tryUrl(cfg, url, style) {
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json', ...headersForStyle(cfg, style) },
   })
   const text = await res.text()
   let data = null
   try { data = text ? JSON.parse(text) : null } catch { data = null }
-  return { ok: res.ok, status: res.status, list: res.ok ? asList(data) : null }
+  return { status: res.status, list: res.ok ? asList(data) : null, snippet: text.slice(0, 180) }
 }
 
 /**
- * Lista TODOS los pases de la cuenta. AddToWallet usa una ruta de listado que
- * sus docs (tras Cloudflare) no exponen, así que el Worker la AUTODESCUBRE:
- * prueba rutas + estilos de auth candidatos y usa el primero que devuelva una
- * lista. El combo ganador queda cacheado. Si ninguno funciona, lo avisa claro.
+ * Lista TODOS los pases (GET /api/card/get, respuesta { cards: [...] }). Prueba
+ * los dos hosts (app./api.) por si uno falla. Si nada funciona, el error
+ * incluye un diagnóstico con lo que devolvió cada intento (status + cuerpo).
  */
 export async function listPasses(cfg) {
   if (!canReadLive(cfg)) {
     return [
-      { id: 'pass_demo1', name: 'Ada Lovelace', template: cfg.addToWallet.templateId, installUrl: 'https://app.addtowallet.co/p/pass_demo1', email: 'ada@biomar.digital', createdAt: '2026-06-01', raw: {} },
-      { id: 'pass_demo2', name: 'Grace Hopper', template: cfg.addToWallet.templateId, installUrl: 'https://app.addtowallet.co/p/pass_demo2', email: 'grace@biomar.digital', createdAt: '2026-06-10', raw: {} },
+      { id: 'pass_demo1', name: 'Ada Lovelace', title: 'CTO', business: 'BioMar', email: 'ada@biomar.digital', phone: null, status: 'ACTIVE', createdAt: '2026-06-01', raw: {} },
+      { id: 'pass_demo2', name: 'Grace Hopper', title: 'Admiral', business: 'BioMar', email: 'grace@biomar.digital', phone: null, status: 'ACTIVE', createdAt: '2026-06-10', raw: {} },
     ]
   }
 
-  const paths = [
-    cfg.addToWallet.listPath, '/passes', '/pass', '/passes/list', '/pass/list',
-    '/passes/all', '/list', '/getPasses', '/get-passes', '/templates',
-    '/direct-api/passes', '/v1/passes',
-  ]
-  const styles = [cfg.addToWallet.authStyle, 'bearer', 'x-api-key', 'api-key']
+  const candidates = []
+  if (cachedHit) candidates.push(cachedHit)
+  candidates.push(
+    { url: `${cfg.addToWallet.baseUrl}${cfg.addToWallet.listPath}`, style: cfg.addToWallet.authStyle },
+    { url: 'https://app.addtowallet.co/api/card/get', style: 'apikey' },
+    { url: 'https://api.addtowallet.co/api/card/get', style: 'apikey' },
+    { url: 'https://app.addtowallet.co/card/get', style: 'apikey' },
+    { url: 'https://app.addtowallet.co/api/card/get', style: 'bearer' },
+  )
 
-  const combos = []
-  if (cachedCombo) combos.push(cachedCombo)
-  for (const path of [...new Set(paths)]) {
-    for (const style of [...new Set(styles)]) combos.push({ path, style })
-  }
-
-  let lastStatus = null
-  for (const { path, style } of combos) {
+  const seen = new Set()
+  const attempts = []
+  for (const c of candidates) {
+    const key = `${c.url}|${c.style}`
+    if (seen.has(key)) continue
+    seen.add(key)
     let r
-    try { r = await tryList(cfg, path, style) } catch { continue }
-    lastStatus = r.status
+    try {
+      r = await tryUrl(cfg, c.url, c.style)
+    } catch (e) {
+      attempts.push({ url: c.url, style: c.style, error: String(e.message ?? e) })
+      continue
+    }
+    attempts.push({ url: c.url, style: c.style, status: r.status, snippet: r.snippet })
     if (r.list) {
-      cachedCombo = { path, style }
+      cachedHit = c
       return r.list.map(normalizePass)
     }
   }
-  throw new Error(
-    `No encontré un endpoint para listar pases en AddToWallet (probé varias rutas y estilos de auth; último estado HTTP ${lastStatus}). Es posible que esta API no permita listar todos los pases — habría que confirmarlo con su soporte/docs.`,
-  )
+  throw new Error('No pude listar pases. Diagnóstico por intento: ' + JSON.stringify(attempts))
 }
 
 /** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */
