@@ -1,0 +1,32 @@
+# Configuración de Cloudflare Pages + Functions + D1.
+# El frontend (React/Vite) se compila a web/dist y Cloudflare sirve esa carpeta
+# como estático; todo lo que cuelga de /api lo atienden las Pages Functions de
+# la carpeta functions/.
+
+name = "digital-business-cards"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "web/dist"
+
+# Base de datos D1 (SQLite serverless). Crea la base con:
+#   wrangler d1 create dbc
+# y pega el database_id que te devuelva aquí abajo (y en el dashboard de Pages).
+[[d1_databases]]
+binding = "DB"
+database_name = "dbc"
+database_id = "REEMPLAZA_CON_TU_DATABASE_ID"
+
+# ── Variables NO secretas (se pueden ver en el dashboard) ──
+[vars]
+PROVIDER_MODE = "mock"            # mock | live
+ADDTOWALLET_BASE_URL = "https://app.addtowallet.co/api"
+ADDTOWALLET_TEMPLATE_ID = "6a0edd8fbd302f5983d094e4"
+QRCODE_BASE_URL = "https://api.qr-code-generator.com/v1"
+QRCODE_SHORT_DOMAIN = "qrco.de"
+QRCODE_TEMPLATE_ID = "84848399"
+EMAIL_PROVIDER = "brevo"          # brevo | addtowallet
+EMAIL_FROM = "Biomar Digital <no-reply@biomar.digital>"
+
+# ── Secretos (NO se ponen aquí) ──
+# Configúralos en Cloudflare como "Secrets" del proyecto Pages, o en local en
+# un archivo .dev.vars (ver .dev.vars.example). Son:
+#   ADMIN_TOKEN, ADDTOWALLET_API_KEY, QRCODE_API_KEY, BREVO_API_KEY

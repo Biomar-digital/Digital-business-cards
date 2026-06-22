@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# Variables y secretos para desarrollo local con `wrangler pages dev`.
+# Copia este archivo como `.dev.vars` y rellena tus credenciales.
+# En PRODUCCIÓN, los secretos se configuran en el dashboard de Cloudflare
+# Pages (Settings → Environment variables / Secrets), NO en este archivo.
+# ─────────────────────────────────────────────────────────────
+
+# mock -> simula pases/QR (no llama a ninguna API real)
+# live -> usa AddToWallet + qr-code-generator reales
+PROVIDER_MODE=mock
+
+# Protección del panel (cabecera x-admin-token)
+ADMIN_TOKEN=cambia-este-token
+
+# ── AddToWallet ──
+ADDTOWALLET_API_KEY=
+ADDTOWALLET_BASE_URL=https://app.addtowallet.co/api
+ADDTOWALLET_TEMPLATE_ID=6a0edd8fbd302f5983d094e4
+
+# ── qr-code-generator (qrco.de) ──
+QRCODE_API_KEY=
+QRCODE_BASE_URL=https://api.qr-code-generator.com/v1
+QRCODE_SHORT_DOMAIN=qrco.de
+QRCODE_TEMPLATE_ID=84848399
+
+# ── Email (Brevo) ──
+EMAIL_PROVIDER=brevo
+BREVO_API_KEY=
+EMAIL_FROM="Biomar Digital <no-reply@biomar.digital>"
