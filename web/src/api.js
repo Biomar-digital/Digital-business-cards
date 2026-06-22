@@ -45,4 +45,7 @@ export const api = {
   listPasses: () => request('/passes'),
   passesDebug: () => request('/passes/debug'),
   listTemplates: () => request('/templates'),
+
+  listPeople: () => request('/people'),
+  syncPeople: (force) => request(`/people/sync${force ? '?force=1' : ''}`, { method: 'POST' }),
 }

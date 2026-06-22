@@ -42,6 +42,31 @@ const STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_cards_group ON cards(group_id)`,
   `CREATE INDEX IF NOT EXISTS idx_logs_card ON send_logs(card_id)`,
+  // Contactos extraídos de las vCards de qr-code-generator (cacheados para no
+  // pedir la landing en cada carga e inflar los scans).
+  `CREATE TABLE IF NOT EXISTS contacts (
+    qr_id        TEXT PRIMARY KEY,
+    short_code   TEXT,
+    short_url    TEXT,
+    full_name    TEXT,
+    first_name   TEXT,
+    last_name    TEXT,
+    company      TEXT,
+    job          TEXT,
+    email        TEXT,
+    mobile       TEXT,
+    phone        TEXT,
+    website      TEXT,
+    city         TEXT,
+    country      TEXT,
+    folder_id    TEXT,
+    folder_name  TEXT,
+    total_scans  INTEGER,
+    unique_scans INTEGER,
+    created_at   TEXT,
+    synced_at    TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company)`,
 ]
 
 export async function ensureSchema(DB) {

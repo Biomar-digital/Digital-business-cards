@@ -200,6 +200,16 @@ function vcardField(html, key) {
     .trim() || null
 }
 
+/** Pide la landing del vCard (short_url) y devuelve el contacto parseado. */
+export async function getVcardLanding(cfg, shortUrl) {
+  const res = await fetch(shortUrl, {
+    redirect: 'follow',
+    headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,*/*' },
+  })
+  const text = await res.text()
+  return parseVcardHtml(text)
+}
+
 /** Parsea los datos del contacto desde el HTML de la landing del vCard. */
 export function parseVcardHtml(html) {
   const first = vcardField(html, 'firstname')

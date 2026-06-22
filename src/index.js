@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { nanoid } from 'nanoid'
 import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
+import * as contacts from './lib/contacts.js'
 import { ensureSchema } from './lib/db.js'
 import * as wallet from './lib/providers/addToWallet.js'
 import * as qr from './lib/providers/qrCode.js'
@@ -104,6 +105,13 @@ api.get('/qr/vcard-page', async (c) => c.json(await qr.inspectVcardPage(getConfi
 api.get('/passes', async (c) => c.json(await wallet.listPasses(getConfig(c.env))))
 api.get('/passes/raw', async (c) => c.json(await wallet.listPassesRaw(getConfig(c.env))))
 api.get('/passes/debug', async (c) => c.json(await wallet.debugList(getConfig(c.env))))
+
+// ── Directorio de personas (contactos extraídos de las vCards) ──
+api.get('/people', async (c) => c.json(await contacts.listContacts(c.env.DB)))
+api.post('/people/sync', async (c) => {
+  const force = c.req.query('force') === '1'
+  return c.json(await contacts.syncContacts(getConfig(c.env), c.env.DB, { force }))
+})
 
 // ── Plantillas dinámicas (AddToWallet) ──
 api.get('/templates', async (c) => c.json(await wallet.listTemplates(getConfig(c.env))))
