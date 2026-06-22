@@ -9,6 +9,24 @@ import NewCard from './pages/NewCard.jsx'
 import Passes from './pages/Passes.jsx'
 import QrCodes from './pages/QrCodes.jsx'
 
+function Logo() {
+  const [ok, setOk] = useState(true)
+  return (
+    <span className="brand-chip">
+      {ok ? (
+        <img
+          className="brand-logo"
+          src="https://logo.clearbit.com/biomar.com"
+          alt="BioMar"
+          onError={() => setOk(false)}
+        />
+      ) : (
+        <span className="brand-word">BioMar</span>
+      )}
+    </span>
+  )
+}
+
 function Login({ onAuthed }) {
   const [token, setT] = useState(getToken())
   const [error, setError] = useState('')
@@ -32,8 +50,8 @@ function Login({ onAuthed }) {
   return (
     <div className="login">
       <form className="login-card card" onSubmit={submit}>
-        <h1 style={{ marginTop: 0 }}><span className="logo">Bio</span>Mar</h1>
-        <p className="muted" style={{ marginTop: -8 }}>Digital Business Cards · Admin</p>
+        <Logo />
+        <p className="muted" style={{ margin: '12px 0 18px' }}>Digital Business Cards · Admin</p>
         <div className="field">
           <label>Admin token</label>
           <input
@@ -77,8 +95,8 @@ export default function App() {
     <div className="layout">
       <aside className="sidebar">
         <div className="brand">
-          <span className="logo">Bio</span>Mar
-          <small>Digital Business Cards · Admin</small>
+          <Logo />
+          <small className="brand-sub">Digital Business Cards · Admin</small>
         </div>
         <nav className="nav">
           <NavLink to="/" end>Dashboard</NavLink>
