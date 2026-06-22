@@ -164,39 +164,59 @@ export async function inspectVcardPage(cfg) {
   const vcard = list.find((x) => x.type_id === 12 || /vcard/i.test(x.type_name || ''))
   if (!vcard?.short_url) return { note: 'No se encontró short_url de vCard' }
 
-  const out = { qrId: vcard.id, name: vcard.title, shortUrl: vcard.short_url }
-  const meta = (html, prop) => (html.match(new RegExp(`${prop}"\\s+content="([^"]*)"`)) || [])[1] || null
-
-  for (const url of [vcard.short_url, `${vcard.short_url}.vcf`, `${vcard.short_url}/vcard`]) {
-    try {
-      const res = await fetch(url, {
-        redirect: 'follow',
-        headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,text/vcard,*/*' },
-      })
-      const text = await res.text()
-      const entry = {
-        status: res.status,
-        contentType: res.headers.get('content-type'),
-        hasVcard: text.includes('BEGIN:VCARD'),
-        ogTitle: meta(text, 'og:title'),
-        ogDescription: meta(text, 'og:description'),
-        emails: [...new Set(text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) || [])].slice(0, 8),
-        tels: [...new Set(text.match(/tel:[+\d\s()\-.]+/gi) || [])].slice(0, 8),
-        vcfLinks: [...new Set([...text.matchAll(/[^"'\s]+\.vcf[^"'\s]*/gi)].map((m) => m[0]))].slice(0, 5),
-      }
-      // Si es una vCard cruda, devolvemos su texto completo.
-      if (entry.hasVcard) {
-        entry.vcard = text.slice(text.indexOf('BEGIN:VCARD'), text.indexOf('END:VCARD') + 9)
-      } else {
-        entry.bodySnippet = text.slice(2000, 6000)
-      }
-      out[url] = entry
-      if (entry.hasVcard || entry.emails.length || entry.tels.length) break
-    } catch (e) {
-      out[url] = String(e.message ?? e)
-    }
+  const res = await fetch(vcard.short_url, {
+    redirect: 'follow',
+    headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,*/*' },
+  })
+  const text = await res.text()
+  const ctx = (key) => {
+    const i = text.indexOf(`"${key}"`)
+    return i >= 0 ? text.slice(i - 10, i + 160) : null
   }
-  return out
+  return {
+    qrId: vcard.id,
+    name: vcard.title,
+    shortUrl: vcard.short_url,
+    status: res.status,
+    parsed: parseVcardHtml(text),
+    context: {
+      firstname: ctx('firstname'),
+      company: ctx('company'),
+      email: ctx('email'),
+      numbers_mobile: ctx('numbers_mobile'),
+      job: ctx('job'),
+    },
+  }
+}
+
+// Extrae un campo "key":"value" del objeto de datos embebido en la landing.
+function vcardField(html, key) {
+  const m = html.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`))
+  if (!m) return null
+  return m[1]
+    .replace(/\\\//g, '/')
+    .replace(/\\u0026/g, '&')
+    .replace(/\\"/g, '"')
+    .trim() || null
+}
+
+/** Parsea los datos del contacto desde el HTML de la landing del vCard. */
+export function parseVcardHtml(html) {
+  const first = vcardField(html, 'firstname')
+  const last = vcardField(html, 'lastname')
+  return {
+    firstName: first,
+    lastName: last,
+    fullName: [first, last].filter(Boolean).join(' ') || null,
+    company: vcardField(html, 'company'),
+    job: vcardField(html, 'job'),
+    email: vcardField(html, 'email'),
+    mobile: vcardField(html, 'numbers_mobile'),
+    phone: vcardField(html, 'numbers_phone'),
+    website: vcardField(html, 'website') || vcardField(html, 'url'),
+    city: vcardField(html, 'city'),
+    country: vcardField(html, 'country'),
+  }
 }
 export async function createDynamicQr(cfg, { name, targetUrl }) {
   if (!cfg.isLive) {
