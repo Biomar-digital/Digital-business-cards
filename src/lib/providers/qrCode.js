@@ -63,9 +63,28 @@ export async function listQrCodes(cfg) {
       { id: 'qr_demo2', name: 'Grace Hopper — tarjeta', scans: 17, shortUrl: 'https://qrco.de/grace45', targetUrl: 'https://app.addtowallet.co/p/pass_demo2', imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fqrco.de%2Fgrace45', createdAt: '2026-06-10', raw: {} },
     ]
   }
-  // ⚙️ AJUSTAR: ruta de listado según tus docs
-  const data = await apiFetch(cfg, '/codes')
-  return extractList(data).map(normalizeQr)
+  // La API pagina (≈20 por página). Recorremos páginas y deduplicamos por id;
+  // si una página no aporta ids nuevos (o viene vacía) paramos. Así traemos
+  // TODOS los QR aunque el nombre exacto del parámetro de página varíe.
+  const seen = new Set()
+  const out = []
+  for (let page = 1; page <= 100; page++) {
+    let data
+    try {
+      data = await apiFetch(cfg, `/codes?page=${page}&per_page=100`)
+    } catch (err) {
+      if (page === 1) throw err
+      break
+    }
+    const items = extractList(data).map(normalizeQr)
+    let added = 0
+    for (const it of items) {
+      const key = it.id != null ? String(it.id) : JSON.stringify(it.raw)
+      if (!seen.has(key)) { seen.add(key); out.push(it); added++ }
+    }
+    if (items.length === 0 || added === 0) break
+  }
+  return out
 }
 
 /** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */

@@ -16,7 +16,7 @@ function Logo() {
       {ok ? (
         <img
           className="brand-logo"
-          src="https://logo.clearbit.com/biomar.com"
+          src="/biomar-logo.png"
           alt="BioMar"
           onError={() => setOk(false)}
         />

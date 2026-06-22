@@ -100,6 +100,9 @@ api.get('/qr/raw', async (c) => c.json(await qr.listQrCodesRaw(getConfig(c.env))
 api.get('/passes', async (c) => c.json(await wallet.listPasses(getConfig(c.env))))
 api.get('/passes/raw', async (c) => c.json(await wallet.listPassesRaw(getConfig(c.env))))
 
+// Descubrimiento de la API de AddToWallet (lee spec + prueba rutas/auth).
+api.get('/_discover', async (c) => c.json(await wallet.discover(getConfig(c.env))))
+
 api.onError((err, c) => {
   console.error(err)
   return c.json({ error: String(err.message ?? err) }, 500)

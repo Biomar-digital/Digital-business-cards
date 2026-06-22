@@ -12,6 +12,10 @@ export function getConfig(env) {
       apiKey: env.ADDTOWALLET_API_KEY || '',
       baseUrl: env.ADDTOWALLET_BASE_URL || 'https://app.addtowallet.co/api',
       templateId: env.ADDTOWALLET_TEMPLATE_ID || '',
+      // Ruta de "listar pases": se descubre con /api/_discover y se fija aquí
+      // o por variable de entorno, sin tocar código.
+      listPath: env.ADDTOWALLET_LIST_PATH || '/passes',
+      authStyle: env.ADDTOWALLET_AUTH_STYLE || 'bearer', // bearer | x-api-key | api-key
     },
 
     qrCode: {
