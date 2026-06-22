@@ -1,21 +1,20 @@
-# Configuración de Cloudflare Pages + Functions + D1.
-# El frontend (React/Vite) se compila a web/dist y Cloudflare sirve esa carpeta
-# como estático; todo lo que cuelga de /api lo atienden las Pages Functions de
-# la carpeta functions/.
+# Cloudflare Worker (con Static Assets) — mismo patrón que el resto de
+# proyectos de la cuenta (.workers.dev). El Worker sirve la API en /api y el
+# panel compilado (web/dist) como estático.
+#
+# Build command (en Cloudflare):  npm run build
+# Deploy command (en Cloudflare):  npx wrangler deploy
 
-name = "digital-business-cards"
+name = "digitalbusinesscards"
+main = "src/index.js"
 compatibility_date = "2024-09-23"
-pages_build_output_dir = "web/dist"
 
-# Base de datos D1 (SQLite serverless). Crea la base con:
-#   wrangler d1 create dbc
-# y pega el database_id que te devuelva aquí abajo (y en el dashboard de Pages).
-[[d1_databases]]
-binding = "DB"
-database_name = "dbc"
-database_id = "REEMPLAZA_CON_TU_DATABASE_ID"
+# Panel React compilado servido como estático.
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
 
-# ── Variables NO secretas (se pueden ver en el dashboard) ──
+# ── Variables NO secretas ──
 [vars]
 PROVIDER_MODE = "mock"            # mock | live
 ADDTOWALLET_BASE_URL = "https://app.addtowallet.co/api"
@@ -26,7 +25,16 @@ QRCODE_TEMPLATE_ID = "84848399"
 EMAIL_PROVIDER = "brevo"          # brevo | addtowallet
 EMAIL_FROM = "Biomar Digital <no-reply@biomar.digital>"
 
-# ── Secretos (NO se ponen aquí) ──
-# Configúralos en Cloudflare como "Secrets" del proyecto Pages, o en local en
-# un archivo .dev.vars (ver .dev.vars.example). Son:
-#   ADMIN_TOKEN, ADDTOWALLET_API_KEY, QRCODE_API_KEY, BREVO_API_KEY
+# ── Base de datos D1 ──
+# Descomenta este bloque y pega tu database_id DESPUÉS de crear la base:
+#   npx wrangler d1 create dbc
+# (o créala en el dashboard: Storage & databases → D1 → Create → "dbc")
+#
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "dbc"
+# database_id = "REEMPLAZA_CON_TU_DATABASE_ID"
+
+# ── Secretos (NO van aquí) ──
+# Configúralos en el Worker (Settings → Variables and Secrets) o en local en
+# .dev.vars. Son: ADMIN_TOKEN, ADDTOWALLET_API_KEY, QRCODE_API_KEY, BREVO_API_KEY

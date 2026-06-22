@@ -2,7 +2,7 @@
   "name": "digital-business-cards",
   "version": "0.1.0",
   "private": true,
-  "description": "Panel de administración que unifica AddToWallet (pases wallet) y qr-code-generator (QR dinámicos) para tarjetas de presentación digitales. Desplegado en Cloudflare Pages + Functions + D1.",
+  "description": "Panel de administración que unifica AddToWallet (pases wallet) y qr-code-generator (QR dinámicos) para tarjetas de presentación digitales. Desplegado en Cloudflare Workers + Static Assets + D1.",
   "type": "module",
   "workspaces": [
     "web"
@@ -10,10 +10,10 @@
   "scripts": {
     "build": "npm --workspace web run build",
     "dev:web": "npm --workspace web run dev",
-    "dev": "npm run build && wrangler pages dev web/dist",
+    "dev": "npm run build && wrangler dev",
     "db:init": "wrangler d1 execute dbc --local --file=./schema.sql",
     "db:init:remote": "wrangler d1 execute dbc --remote --file=./schema.sql",
-    "deploy": "npm run build && wrangler pages deploy web/dist"
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "hono": "^4.6.3",
