@@ -97,6 +97,8 @@ api.get('/qr', async (c) => c.json(await qr.listQrCodes(getConfig(c.env))))
 api.get('/qr/raw', async (c) => c.json(await qr.listQrCodesRaw(getConfig(c.env))))
 // Detalle de una vCard de ejemplo (para descubrir todos los campos).
 api.get('/qr/detail-sample', async (c) => c.json(await qr.sampleVcardDetail(getConfig(c.env))))
+// Inspección de la landing del vCard (para extraer el contacto / .vcf).
+api.get('/qr/vcard-page', async (c) => c.json(await qr.inspectVcardPage(getConfig(c.env))))
 
 // ── Pases de la cuenta (AddToWallet) ──
 api.get('/passes', async (c) => c.json(await wallet.listPasses(getConfig(c.env))))

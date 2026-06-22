@@ -41,6 +41,7 @@ export const api = {
   listQr: () => request('/qr'),
   qrRaw: () => request('/qr/raw'),
   qrDetailSample: () => request('/qr/detail-sample'),
+  qrVcardPage: () => request('/qr/vcard-page'),
   listPasses: () => request('/passes'),
   passesDebug: () => request('/passes/debug'),
   listTemplates: () => request('/templates'),

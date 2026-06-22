@@ -153,7 +153,38 @@ export async function sampleVcardDetail(cfg) {
   return result
 }
 
-/** Crea un QR DINÁMICO cuyo destino es la URL del pase. */
+/**
+ * Diagnóstico: pide la landing del vCard (short_url) y busca el .vcf o los
+ * datos embebidos (BEGIN:VCARD / JSON), para saber cómo extraer el contacto.
+ */
+export async function inspectVcardPage(cfg) {
+  if (!canReadLive(cfg)) return { note: 'Sin API key' }
+  const data = await apiFetch(cfg, '/codes?page=1&per_page=100')
+  const list = extractList(data)
+  const vcard = list.find((x) => x.type_id === 12 || /vcard/i.test(x.type_name || ''))
+  if (!vcard?.short_url) return { note: 'No se encontró short_url de vCard' }
+
+  const out = { qrId: vcard.id, name: vcard.title, shortUrl: vcard.short_url }
+  try {
+    const res = await fetch(vcard.short_url, {
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,application/json' },
+    })
+    const text = await res.text()
+    out.finalUrl = res.url
+    out.status = res.status
+    out.contentType = res.headers.get('content-type')
+    out.hasVcard = text.includes('BEGIN:VCARD')
+    out.vcfLinks = [...text.matchAll(/https?:\/\/[^"'\s)]+\.vcf[^"'\s)]*/gi)].map((m) => m[0]).slice(0, 5)
+    // Posibles datos embebidos (Next.js / JSON con el contacto)
+    const nextData = text.match(/__NEXT_DATA__[^>]*>([^<]+)</)
+    out.embeddedJsonSnippet = nextData ? nextData[1].slice(0, 1500) : null
+    out.snippet = text.slice(0, 2000)
+  } catch (e) {
+    out.error = String(e.message ?? e)
+  }
+  return out
+}
 export async function createDynamicQr(cfg, { name, targetUrl }) {
   if (!cfg.isLive) {
     const code = nanoid(6)

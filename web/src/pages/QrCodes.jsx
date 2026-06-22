@@ -64,9 +64,9 @@ export default function QrCodes() {
         <button
           className="btn secondary"
           style={{ marginTop: 18 }}
-          onClick={() => api.qrDetailSample().then(setDetail).catch((e) => setDetail({ error: String(e.message || e) }))}
+          onClick={() => api.qrVcardPage().then(setDetail).catch((e) => setDetail({ error: String(e.message || e) }))}
         >
-          Inspect one vCard detail
+          Inspect vCard page
         </button>
       </div>
 
