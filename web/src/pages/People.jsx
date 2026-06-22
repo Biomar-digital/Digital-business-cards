@@ -12,6 +12,16 @@ export default function People() {
   const [group, setGroup] = useState(ALL)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [test, setTest] = useState(null)
+
+  async function createTest() {
+    setTest({ loading: true })
+    try {
+      setTest(await api.createTestCard())
+    } catch (e) {
+      setTest({ error: String(e.message || e) })
+    }
+  }
 
   const load = () => api.listPeople().then(setPeople).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
@@ -92,8 +102,20 @@ export default function People() {
           <button className="btn secondary" disabled={busy} onClick={() => sync(true)} title="Re-fetch all">
             Resync all
           </button>
+          <button className="btn" onClick={createTest} title="Crea 1 QR vCard + 1 wallet pass reales de prueba">
+            Create test card
+          </button>
         </div>
       </div>
+
+      {test && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <b>Test card result (QR vCard + wallet pass):</b>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, maxHeight: 320, overflow: 'auto', marginBottom: 0 }}>
+            {test.loading ? 'Creating…' : JSON.stringify(test, null, 2)}
+          </pre>
+        </div>
+      )}
       <p className="muted" style={{ marginTop: -10 }}>
         Contacts extracted from the vCard QR codes. {msg && <b>{msg}</b>}
       </p>

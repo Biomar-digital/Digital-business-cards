@@ -289,3 +289,67 @@ export async function deletePass(cfg, passId) {
   if (!cfg.isLive) return { ok: true, mocked: true }
   return apiFetch(cfg, `/passes/${passId}`, { method: 'DELETE' })
 }
+
+/**
+ * PRUEBA: crea un wallet pass real reutilizando el diseño de una plantilla
+ * existente (logoUrl/heroImage/colores BioMar). Devuelve el resultado crudo.
+ */
+export async function createTestPass(cfg, barcodeValue) {
+  let design = {}
+  try {
+    const data = await apiFetch(cfg, cfg.addToWallet.listPath)
+    const cardsList = asList(data) || []
+    const t = cardsList.find((c) => c.logoUrl && c.heroImage) || cardsList[0] || {}
+    design = {
+      logoUrl: t.logoUrl, heroImage: t.heroImage,
+      googleHeroImage: t.googleHeroImage, appleHeroImage: t.appleHeroImage,
+      hexBackgroundColor: t.hexBackgroundColor, appleFontColor: t.appleFontColor,
+    }
+  } catch {
+    // seguimos con fallbacks
+  }
+  const payload = {
+    cardTitle: 'BioMar Group',
+    header: 'TEST — API Card',
+    subheader: 'Please ignore / delete',
+    logoUrl: design.logoUrl || 'https://s3.amazonaws.com/i.addtowallet.co/addtowallet-f71f1720-61b2-41ca-a212-c2300893d2b7',
+    heroImage: design.heroImage || 'https://s3.amazonaws.com/i.addtowallet.co/addtowallet-11bb2dc7-d73e-48f9-bcd3-6e76b9d350f7',
+    googleHeroImage: design.googleHeroImage || design.heroImage,
+    appleHeroImage: design.appleHeroImage || design.heroImage,
+    hexBackgroundColor: design.hexBackgroundColor || '#1F3E77',
+    appleFontColor: design.appleFontColor || '#ffffff',
+    barcodeType: 'QR_CODE',
+    barcodeValue: barcodeValue || 'https://www.biomar.com',
+    barcodeAltText: 'Scan to add contact',
+    textModulesData: [
+      { id: 'r1start', header: 'Email', body: 'test@biomar.com' },
+      { id: 'r1end', header: 'Phone', body: '+45 00000000' },
+    ],
+    linksModuleData: [{ id: 'r1', description: 'Website', uri: 'https://www.biomar.com' }],
+  }
+  const res = await fetch(`${cfg.addToWallet.baseUrl}/card/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(cfg) },
+    body: JSON.stringify(payload),
+  })
+  const text = await res.text()
+  let json = null
+  try { json = JSON.parse(text) } catch { /* texto */ }
+  return { status: res.status, ok: res.ok, response: json ?? text.slice(0, 600), sentDesign: design }
+}
+
+/** PRUEBA: borra un pase creado en la prueba (para limpiar). */
+export async function deleteTestPass(cfg, id) {
+  for (const path of [`/card/delete/${id}`, `/card/${id}`, '/card/delete']) {
+    try {
+      const res = await fetch(`${cfg.addToWallet.baseUrl}${path}`, {
+        method: path === '/card/delete' ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json', ...authHeaders(cfg) },
+        body: path === '/card/delete' ? JSON.stringify({ id, cardId: id }) : undefined,
+      })
+      const text = await res.text()
+      if (res.ok) return { ok: true, path, status: res.status, body: text.slice(0, 300) }
+    } catch { /* siguiente */ }
+  }
+  return { ok: false }
+}

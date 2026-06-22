@@ -277,3 +277,64 @@ export async function deleteQr(cfg, qrId) {
   if (!cfg.isLive) return { ok: true, mocked: true }
   return apiFetch(cfg, `/codes/${qrId}`, { method: 'DELETE' })
 }
+
+/**
+ * PRUEBA: intenta crear un QR vCard real probando varias formas de payload
+ * (no conocemos el esquema exacto). Para en el primero que devuelva 2xx.
+ */
+export async function createTestVcardQr(cfg) {
+  const url = `${cfg.qrCode.baseUrl}/codes?access-token=${encodeURIComponent(cfg.qrCode.apiKey)}`
+  const v = {
+    type_id: 12,
+    name: 'TEST — API vCard',
+    qr_code_name: 'TEST — API vCard',
+    firstname: 'Test',
+    lastname: 'BioMar',
+    company: 'BioMar Group',
+    job: 'API Test',
+    email: 'test@biomar.com',
+    numbers_mobile: '+45 00000000',
+    website: 'biomar.com',
+  }
+  const payloads = [
+    v,
+    { qr_code: v },
+    { name: 'TEST — API vCard', type: 'vcard', vcard: v },
+    { name: 'TEST — API vCard', type_id: 12, data: v },
+    { name: 'TEST — API vCard', qr_code_type: 'vcard', ...v },
+  ]
+  const attempts = []
+  for (const body of payloads) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const text = await res.text()
+      let json = null
+      try { json = JSON.parse(text) } catch { /* texto */ }
+      attempts.push({ payloadKeys: Object.keys(body), status: res.status, body: text.slice(0, 350) })
+      if (res.ok) {
+        const created = json?.data ?? json ?? {}
+        return { ok: true, created, shortUrl: created.short_url ?? created.shortUrl ?? null, attempts }
+      }
+    } catch (e) {
+      attempts.push({ error: String(e.message ?? e) })
+    }
+  }
+  return { ok: false, attempts }
+}
+
+/** PRUEBA: borra un QR creado en la prueba. */
+export async function deleteTestQr(cfg, id) {
+  try {
+    const res = await fetch(
+      `${cfg.qrCode.baseUrl}/codes/${id}?access-token=${encodeURIComponent(cfg.qrCode.apiKey)}`,
+      { method: 'DELETE' },
+    )
+    return { ok: res.ok, status: res.status }
+  } catch (e) {
+    return { ok: false, error: String(e.message ?? e) }
+  }
+}
