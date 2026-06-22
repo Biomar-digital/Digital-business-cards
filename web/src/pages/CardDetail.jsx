@@ -16,19 +16,19 @@ export default function CardDetail() {
     api.cardAnalytics(id).then(setAnalytics).catch(() => {})
   }, [id])
 
-  if (!card) return <div className="empty">Cargando…</div>
+  if (!card) return <div className="empty">Loading…</div>
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 2500) }
 
   async function resend() {
     setBusy(true)
-    try { await api.sendCard(id); flash('Pase enviado por email ✅'); load() }
+    try { await api.sendCard(id); flash('Pass sent by email ✅'); load() }
     catch (e) { flash('Error: ' + e.message) }
     finally { setBusy(false) }
   }
 
   async function remove() {
-    if (!confirm('¿Eliminar esta tarjeta, su pase y su QR?')) return
+    if (!confirm('Delete this card, its pass and its QR?')) return
     await api.deleteCard(id)
     navigate('/cards')
   }
@@ -38,8 +38,8 @@ export default function CardDetail() {
       <div className="page-head">
         <h1>{card.full_name} <span className={`badge ${card.status}`}>{card.status}</span></h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn secondary" onClick={resend} disabled={busy || !card.email}>📧 Reenviar pase</button>
-          <button className="btn danger" onClick={remove}>Eliminar</button>
+          <button className="btn secondary" onClick={resend} disabled={busy || !card.email}>Resend pass</button>
+          <button className="btn danger" onClick={remove}>Delete</button>
         </div>
       </div>
 
@@ -47,27 +47,27 @@ export default function CardDetail() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 20 }}>
         <div className="card">
-          <Row label="Cargo" value={card.job_title} />
-          <Row label="Empresa" value={card.company} />
+          <Row label="Job title" value={card.job_title} />
+          <Row label="Company" value={card.company} />
           <Row label="Email" value={card.email} />
-          <Row label="Teléfono" value={card.phone} />
-          <Row label="Sitio web" value={card.website} />
-          <Row label="Pase wallet" value={card.pass_url} link />
+          <Row label="Phone" value={card.phone} />
+          <Row label="Website" value={card.website} />
+          <Row label="Wallet pass" value={card.pass_url} link />
           <Row label="QR (qrco.de)" value={card.qr_short_url} link />
-          {analytics && <Row label="Escaneos" value={`${analytics.scans} (${analytics.unique} únicos)`} />}
+          {analytics && <Row label="Scans" value={`${analytics.scans} (${analytics.unique} unique)`} />}
         </div>
         <div className="card" style={{ textAlign: 'center' }}>
           {card.qr_image_url
             ? <img className="qr-img" src={card.qr_image_url} alt="QR" />
-            : <span className="muted">Sin QR</span>}
+            : <span className="muted">No QR</span>}
           <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>{card.qr_short_url}</p>
         </div>
       </div>
 
-      <h2 style={{ fontSize: 16, marginTop: 28 }}>Historial de envíos</h2>
+      <h2 style={{ fontSize: 16, marginTop: 28 }}>Send history</h2>
       {card.logs?.length ? (
         <table>
-          <thead><tr><th>Fecha</th><th>Canal</th><th>Destino</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Date</th><th>Channel</th><th>Recipient</th><th>Status</th></tr></thead>
           <tbody>
             {card.logs.map((l) => (
               <tr key={l.id}>
@@ -79,7 +79,7 @@ export default function CardDetail() {
             ))}
           </tbody>
         </table>
-      ) : <p className="muted">Sin envíos todavía.</p>}
+      ) : <p className="muted">No sends yet.</p>}
 
       {toast && <div className="toast">{toast}</div>}
     </>

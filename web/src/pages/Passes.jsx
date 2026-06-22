@@ -17,27 +17,27 @@ export default function Passes() {
   return (
     <>
       <div className="page-head">
-        <h1>Pases AddToWallet ({passes ? passes.length : '…'})</h1>
+        <h1>Wallet passes ({passes ? passes.length : '…'})</h1>
         <input
-          placeholder="Buscar por nombre…"
+          placeholder="Search by name…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           style={{ maxWidth: 240 }}
         />
       </div>
       <p className="muted" style={{ marginTop: -10 }}>
-        Todos los pases (Apple/Google Wallet) de la cuenta de AddToWallet.
+        All Apple/Google Wallet passes from the AddToWallet account.
       </p>
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
-      {!passes && !error && <div className="empty">Cargando…</div>}
-      {passes && list.length === 0 && <div className="empty">No hay pases.</div>}
+      {!passes && !error && <div className="empty">Loading…</div>}
+      {passes && list.length === 0 && <div className="empty">No passes.</div>}
 
       {list.length > 0 && (
         <table>
           <thead>
             <tr>
-              <th>Nombre</th><th>Email</th><th>Plantilla</th><th>Instalar</th><th>Creado</th>
+              <th>Name</th><th>Email</th><th>Template</th><th>Install</th><th>Created</th>
             </tr>
           </thead>
           <tbody>
@@ -46,7 +46,7 @@ export default function Passes() {
                 <td>{x.name}</td>
                 <td className="muted">{x.email || '—'}</td>
                 <td className="muted ellipsis">{x.template || '—'}</td>
-                <td>{x.installUrl ? <a href={x.installUrl} target="_blank" rel="noreferrer">Abrir pase</a> : '—'}</td>
+                <td>{x.installUrl ? <a href={x.installUrl} target="_blank" rel="noreferrer">Open pass</a> : '—'}</td>
                 <td className="muted">{x.createdAt || '—'}</td>
               </tr>
             ))}

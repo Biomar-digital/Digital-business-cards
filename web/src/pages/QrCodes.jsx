@@ -17,27 +17,27 @@ export default function QrCodes() {
   return (
     <>
       <div className="page-head">
-        <h1>QR ({qrs ? qrs.length : '…'})</h1>
+        <h1>QR codes ({qrs ? qrs.length : '…'})</h1>
         <input
-          placeholder="Buscar por nombre…"
+          placeholder="Search by name…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           style={{ maxWidth: 240 }}
         />
       </div>
       <p className="muted" style={{ marginTop: -10 }}>
-        Todos los QR dinámicos de la cuenta de qr-code-generator.
+        All dynamic QR codes from the qr-code-generator account.
       </p>
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
-      {!qrs && !error && <div className="empty">Cargando…</div>}
-      {qrs && list.length === 0 && <div className="empty">No hay QR.</div>}
+      {!qrs && !error && <div className="empty">Loading…</div>}
+      {qrs && list.length === 0 && <div className="empty">No QR codes.</div>}
 
       {list.length > 0 && (
         <table>
           <thead>
             <tr>
-              <th>QR</th><th>Nombre</th><th>Escaneos</th><th>URL corta</th><th>Destino</th><th>Creado</th>
+              <th>QR</th><th>Name</th><th>Scans</th><th>Short URL</th><th>Target</th><th>Created</th>
             </tr>
           </thead>
           <tbody>

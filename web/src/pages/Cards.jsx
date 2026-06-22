@@ -17,23 +17,23 @@ export default function Cards() {
   return (
     <>
       <div className="page-head">
-        <h1>Tarjetas</h1>
-        <Link className="btn" to="/new">➕ Nueva</Link>
+        <h1>Cards</h1>
+        <Link className="btn" to="/new">New card</Link>
       </div>
 
       <div className="field" style={{ maxWidth: 260 }}>
-        <label>Filtrar por grupo</label>
+        <label>Filter by group</label>
         <select value={filter} onChange={(e) => { setFilter(e.target.value); load(e.target.value) }}>
-          <option value="">Todos</option>
+          <option value="">All</option>
           {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
       </div>
 
       {cards.length === 0 ? (
-        <div className="empty">No hay tarjetas.</div>
+        <div className="empty">No cards.</div>
       ) : (
         <table>
-          <thead><tr><th>Nombre</th><th>Cargo</th><th>Email</th><th>Estado</th><th>Pase</th></tr></thead>
+          <thead><tr><th>Name</th><th>Job title</th><th>Email</th><th>Status</th><th>Pass</th></tr></thead>
           <tbody>
             {cards.map((c) => (
               <tr key={c.id}>
@@ -41,7 +41,7 @@ export default function Cards() {
                 <td className="muted">{c.job_title || '—'}</td>
                 <td className="muted">{c.email || '—'}</td>
                 <td><span className={`badge ${c.status}`}>{c.status}</span></td>
-                <td>{c.pass_url ? <a href={c.pass_url} target="_blank" rel="noreferrer">Abrir</a> : '—'}</td>
+                <td>{c.pass_url ? <a href={c.pass_url} target="_blank" rel="noreferrer">Open</a> : '—'}</td>
               </tr>
             ))}
           </tbody>

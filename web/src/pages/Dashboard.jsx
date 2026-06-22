@@ -20,27 +20,27 @@ export default function Dashboard() {
     <>
       <div className="page-head">
         <h1>Dashboard</h1>
-        <Link className="btn" to="/new">➕ Nueva tarjeta</Link>
+        <Link className="btn" to="/new">New card</Link>
       </div>
       {mode === 'mock' && (
         <p className="muted" style={{ marginTop: -10 }}>
-          ⚠️ Modo <b>mock</b>: las tarjetas y QR son simulados. Configura las API keys
-          y <code>PROVIDER_MODE=live</code> para usar los proveedores reales.
+          <b>Mock mode</b>: passes and QR codes are simulated. Set the API keys and
+          {' '}<code>PROVIDER_MODE=live</code> to use the real providers.
         </p>
       )}
       <div className="cards-grid">
-        <div className="stat"><div className="num">{cards.length}</div><div className="label">Tarjetas</div></div>
-        <div className="stat"><div className="num">{active}</div><div className="label">Activas</div></div>
-        <div className="stat"><div className="num">{groups.length}</div><div className="label">Grupos</div></div>
-        <div className="stat"><div className="num" style={{ color: errors ? 'var(--red)' : undefined }}>{errors}</div><div className="label">Con error</div></div>
+        <div className="stat"><div className="num">{cards.length}</div><div className="label">Cards</div></div>
+        <div className="stat"><div className="num">{active}</div><div className="label">Active</div></div>
+        <div className="stat"><div className="num">{groups.length}</div><div className="label">Groups</div></div>
+        <div className="stat"><div className="num" style={{ color: errors ? 'var(--red)' : undefined }}>{errors}</div><div className="label">With errors</div></div>
       </div>
 
-      <h2 style={{ marginTop: 32, fontSize: 16 }}>Últimas tarjetas</h2>
+      <h2 style={{ marginTop: 32, fontSize: 16 }}>Latest cards</h2>
       {cards.length === 0 ? (
-        <div className="empty">Aún no hay tarjetas. Crea la primera.</div>
+        <div className="empty">No cards yet. Create the first one.</div>
       ) : (
         <table>
-          <thead><tr><th>Nombre</th><th>Empresa</th><th>Estado</th><th>QR</th></tr></thead>
+          <thead><tr><th>Name</th><th>Company</th><th>Status</th><th>QR</th></tr></thead>
           <tbody>
             {cards.slice(0, 8).map((c) => (
               <tr key={c.id}>

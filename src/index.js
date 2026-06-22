@@ -17,7 +17,10 @@ api.use('*', cors())
 api.use('*', async (c, next) => {
   const cfg = getConfig(c.env)
   if (!cfg.adminToken) return next()
+  // Token por cabecera (el panel) o por query param (para abrir URLs de
+  // diagnóstico como /api/qr/raw?token=... directamente en el navegador).
   if (c.req.header('x-admin-token') === cfg.adminToken) return next()
+  if (c.req.query('token') === cfg.adminToken) return next()
   return c.json({ error: 'No autorizado' }, 401)
 })
 
