@@ -1,0 +1,21 @@
+{
+  "name": "digital-business-cards",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Panel de administración que unifica AddToWallet (pases wallet) y qr-code-generator (QR dinámicos) para tarjetas de presentación digitales.",
+  "type": "module",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace web run build",
+    "start": "npm --workspace server run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
