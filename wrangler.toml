@@ -26,14 +26,12 @@ EMAIL_PROVIDER = "brevo"          # brevo | addtowallet
 EMAIL_FROM = "Biomar Digital <no-reply@biomar.digital>"
 
 # ── Base de datos D1 ──
-# Descomenta este bloque y pega tu database_id DESPUÉS de crear la base:
-#   npx wrangler d1 create dbc
-# (o créala en el dashboard: Storage & databases → D1 → Create → "dbc")
-#
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "dbc"
-# database_id = "REEMPLAZA_CON_TU_DATABASE_ID"
+# El Worker crea las tablas solo en el primer arranque (ver src/lib/db.js),
+# así que no hace falta cargar schema.sql a mano.
+[[d1_databases]]
+binding = "DB"
+database_name = "dbc"
+database_id = "6d489f5d-7d69-4ecf-848d-91b1bcc3b1f4"
 
 # ── Secretos (NO van aquí) ──
 # Configúralos en el Worker (Settings → Variables and Secrets) o en local en

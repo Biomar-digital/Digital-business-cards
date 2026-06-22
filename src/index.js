@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { nanoid } from 'nanoid'
 import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
+import { ensureSchema } from './lib/db.js'
 
 // ── API (todo lo que cuelga de /api) ──
 const api = new Hono().basePath('/api')
@@ -16,6 +17,12 @@ api.use('*', async (c, next) => {
   if (!cfg.adminToken) return next()
   if (c.req.header('x-admin-token') === cfg.adminToken) return next()
   return c.json({ error: 'No autorizado' }, 401)
+})
+
+// Crea las tablas en D1 la primera vez (idempotente).
+api.use('*', async (c, next) => {
+  await ensureSchema(c.env.DB)
+  return next()
 })
 
 api.get('/health', (c) => c.json({ ok: true, mode: getConfig(c.env).providerMode }))
