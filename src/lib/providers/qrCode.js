@@ -284,24 +284,23 @@ export async function deleteQr(cfg, qrId) {
  */
 export async function createTestVcardQr(cfg) {
   const url = `${cfg.qrCode.baseUrl}/codes?access-token=${encodeURIComponent(cfg.qrCode.apiKey)}`
+  // La API usa camelCase: typeId, url (lo reveló el error 422). typeId 12 = vCard.
   const v = {
-    type_id: 12,
-    name: 'TEST — API vCard',
-    qr_code_name: 'TEST — API vCard',
-    firstname: 'Test',
-    lastname: 'BioMar',
+    firstName: 'Test',
+    lastName: 'BioMar',
     company: 'BioMar Group',
-    job: 'API Test',
+    jobTitle: 'API Test',
     email: 'test@biomar.com',
-    numbers_mobile: '+45 00000000',
+    phone: '+45 00000000',
+    mobile: '+45 00000000',
     website: 'biomar.com',
   }
+  const bioUrl = 'https://www.biomar.com'
   const payloads = [
-    v,
-    { qr_code: v },
-    { name: 'TEST — API vCard', type: 'vcard', vcard: v },
-    { name: 'TEST — API vCard', type_id: 12, data: v },
-    { name: 'TEST — API vCard', qr_code_type: 'vcard', ...v },
+    { typeId: 12, name: 'TEST — API vCard', url: bioUrl, ...v },
+    { typeId: 12, name: 'TEST — API vCard', url: bioUrl, vCard: v },
+    { typeId: 12, name: 'TEST — API vCard', url: bioUrl, data: v },
+    { typeId: 1, name: 'TEST — API Website', url: bioUrl },
   ]
   const attempts = []
   for (const body of payloads) {
