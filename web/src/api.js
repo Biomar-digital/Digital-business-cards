@@ -40,4 +40,5 @@ export const api = {
 
   listQr: () => request('/qr'),
   listPasses: () => request('/passes'),
+  passesDebug: () => request('/passes/debug'),
 }

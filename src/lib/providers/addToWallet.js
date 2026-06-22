@@ -143,6 +143,32 @@ export async function listPassesRaw(cfg) {
 }
 
 /**
+ * Diagnóstico: llama al endpoint exacto de las docs y devuelve status + cuerpo
+ * SIN lanzar error, para ver qué responde realmente la API.
+ */
+export async function debugList(cfg) {
+  if (!canReadLive(cfg)) return { note: 'Sin API key' }
+  const attempts = []
+  const candidates = [
+    { url: `${cfg.addToWallet.baseUrl}/card/get`, style: 'apikey' },
+    { url: 'https://app.addtowallet.co/api/card/get', style: 'apikey' },
+    { url: 'https://app.addtowallet.co/card/get', style: 'apikey' },
+  ]
+  for (const { url, style } of candidates) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json', ...headersForStyle(cfg, style) },
+      })
+      const body = await res.text()
+      attempts.push({ url, authStyle: style, status: res.status, body: body.slice(0, 1200) })
+    } catch (e) {
+      attempts.push({ url, authStyle: style, error: String(e.message ?? e) })
+    }
+  }
+  return { attempts }
+}
+
+/**
  * "Lee la API" desde el Worker (que sí alcanza app.addtowallet.co): intenta
  * bajar la especificación OpenAPI/Swagger y prueba rutas + estilos de auth
  * candidatos. Devuelve un resumen para fijar listPath/authStyle exactos.

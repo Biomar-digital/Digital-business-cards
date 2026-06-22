@@ -4,10 +4,15 @@ import { api } from '../api.js'
 export default function Passes() {
   const [passes, setPasses] = useState(null)
   const [error, setError] = useState('')
+  const [debug, setDebug] = useState(null)
   const [q, setQ] = useState('')
 
   useEffect(() => {
-    api.listPasses().then(setPasses).catch((e) => setError(String(e.message || e)))
+    api.listPasses().then(setPasses).catch((e) => {
+      setError(String(e.message || e))
+      // Al fallar, traemos la respuesta cruda de la API para diagnosticar.
+      api.passesDebug().then(setDebug).catch(() => {})
+    })
   }, [])
 
   const list = (passes || []).filter((x) =>
@@ -30,6 +35,14 @@ export default function Passes() {
       </p>
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
+      {debug && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <b>Diagnóstico de la API (respuesta cruda):</b>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, marginBottom: 0 }}>
+            {JSON.stringify(debug, null, 2)}
+          </pre>
+        </div>
+      )}
       {!passes && !error && <div className="empty">Loading…</div>}
       {passes && list.length === 0 && <div className="empty">No passes.</div>}
 
