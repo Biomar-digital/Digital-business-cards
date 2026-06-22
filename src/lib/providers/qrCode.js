@@ -296,12 +296,18 @@ export async function createTestVcardQr(cfg) {
     website: 'biomar.com',
   }
   const bioUrl = 'https://www.biomar.com'
+  // typeId 1 = Website (aceptado). El error pide `url` pero no en el nivel
+  // superior: probamos dónde va (anidado en qr_code/data/urls/content…).
   const payloads = [
-    { typeId: 12, name: 'TEST — API vCard', url: bioUrl, ...v },
-    { typeId: 12, name: 'TEST — API vCard', url: bioUrl, vCard: v },
-    { typeId: 12, name: 'TEST — API vCard', url: bioUrl, data: v },
-    { typeId: 1, name: 'TEST — API Website', url: bioUrl },
+    { typeId: 1, name: 'TEST — API QR', qrCodeText: bioUrl },
+    { typeId: 1, name: 'TEST — API QR', urls: [{ url: bioUrl }] },
+    { typeId: 1, name: 'TEST — API QR', qr_code: { url: bioUrl } },
+    { typeId: 1, name: 'TEST — API QR', data: { url: bioUrl } },
+    { typeId: 1, name: 'TEST — API QR', qrCode: { url: bioUrl } },
+    { typeId: 1, name: 'TEST — API QR', content: { url: bioUrl } },
+    { typeId: 1, name: 'TEST — API QR', body: { url: bioUrl } },
   ]
+  void v
   const attempts = []
   for (const body of payloads) {
     try {

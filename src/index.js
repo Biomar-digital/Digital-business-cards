@@ -112,12 +112,11 @@ api.post('/people/index', async (c) => c.json(await contacts.indexPeople(getConf
 api.post('/people/sync', async (c) => c.json(await contacts.syncBatch(getConfig(c.env), c.env.DB)))
 api.post('/people/reset', async (c) => c.json(await contacts.resetSync(c.env.DB)))
 
-// ── PRUEBA: crear una tarjeta real (QR vCard + wallet pass) ──
+// ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──
 api.post('/test/create-card', async (c) => {
   const cfg = getConfig(c.env)
   const qrRes = await qr.createTestVcardQr(cfg)
-  const passRes = await wallet.createTestPass(cfg, qrRes.shortUrl || undefined)
-  return c.json({ qr: qrRes, pass: passRes })
+  return c.json({ qr: qrRes })
 })
 
 // ── Plantillas dinámicas (AddToWallet) ──
