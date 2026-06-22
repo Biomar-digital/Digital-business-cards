@@ -39,15 +39,16 @@ function normalizeQr(x) {
   const shortUrl = x.short_url ?? x.shortUrl ?? x.qrcode_url ?? x.qr_url ?? null
   return {
     id: x.id ?? x.qr_id ?? x.code_id ?? null,
-    name: x.name ?? x.qr_code_name ?? x.title ?? '—',
-    company:
-      x.company ?? x.organization ?? x.org ?? x.fields?.company ??
-      x.contact?.company ?? x.vcard?.company ?? x.data?.company ?? null,
-    scans: x.number_of_scans ?? x.scans ?? x.scan_count ?? x.visits ?? 0,
+    name: x.title || x.name || x.qr_code_name || '—',
+    type: x.type_name ?? null,
+    folder: x.folder_id ?? null,
+    isPerson: x.type_id === 12 || /vcard/i.test(x.type_name || ''),
+    scans: x.total_scans ?? x.number_of_scans ?? x.scans ?? 0,
+    uniqueScans: x.unique_scans ?? null,
     shortUrl,
-    targetUrl: x.target_url ?? x.targetUrl ?? x.url ?? x.destination ?? null,
-    imageUrl: x.qr_code ?? x.image_url ?? x.png ?? x.image ?? null,
-    createdAt: x.created ?? x.created_at ?? x.createdAt ?? x.date ?? null,
+    targetUrl: x.target_url ?? x.targetUrl ?? x.url ?? null,
+    imageUrl: x.image_url ?? x.qr_code ?? x.png ?? null,
+    createdAt: x.created ?? x.created_at ?? x.createdAt ?? null,
     raw: x,
   }
 }
