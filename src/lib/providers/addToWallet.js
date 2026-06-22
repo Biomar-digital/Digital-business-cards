@@ -57,7 +57,43 @@ function extractList(data) {
   return data.passes ?? data.data ?? data.items ?? data.results ?? []
 }
 
-/** Lista TODOS los pases de la cuenta. */
+// Devuelve el array de pases si la respuesta TIENE forma de lista, o null si no
+// lo es (evita aceptar por error un 200 que no sea un listado).
+function asList(data) {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object') {
+    const v = data.passes ?? data.data ?? data.items ?? data.results
+    if (Array.isArray(v)) return v
+  }
+  return null
+}
+
+function headersForStyle(cfg, style) {
+  const key = cfg.addToWallet.apiKey
+  if (style === 'x-api-key') return { 'x-api-key': key }
+  if (style === 'api-key') return { 'api-key': key }
+  return { Authorization: `Bearer ${key}` }
+}
+
+// Combo (ruta + estilo de auth) que funcionó, cacheado por isolate.
+let cachedCombo = null
+
+async function tryList(cfg, path, style) {
+  const res = await fetch(`${cfg.addToWallet.baseUrl}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...headersForStyle(cfg, style) },
+  })
+  const text = await res.text()
+  let data = null
+  try { data = text ? JSON.parse(text) : null } catch { data = null }
+  return { ok: res.ok, status: res.status, list: res.ok ? asList(data) : null }
+}
+
+/**
+ * Lista TODOS los pases de la cuenta. AddToWallet usa una ruta de listado que
+ * sus docs (tras Cloudflare) no exponen, así que el Worker la AUTODESCUBRE:
+ * prueba rutas + estilos de auth candidatos y usa el primero que devuelva una
+ * lista. El combo ganador queda cacheado. Si ninguno funciona, lo avisa claro.
+ */
 export async function listPasses(cfg) {
   if (!canReadLive(cfg)) {
     return [
@@ -65,8 +101,33 @@ export async function listPasses(cfg) {
       { id: 'pass_demo2', name: 'Grace Hopper', template: cfg.addToWallet.templateId, installUrl: 'https://app.addtowallet.co/p/pass_demo2', email: 'grace@biomar.digital', createdAt: '2026-06-10', raw: {} },
     ]
   }
-  const data = await apiFetch(cfg, cfg.addToWallet.listPath)
-  return extractList(data).map(normalizePass)
+
+  const paths = [
+    cfg.addToWallet.listPath, '/passes', '/pass', '/passes/list', '/pass/list',
+    '/passes/all', '/list', '/getPasses', '/get-passes', '/templates',
+    '/direct-api/passes', '/v1/passes',
+  ]
+  const styles = [cfg.addToWallet.authStyle, 'bearer', 'x-api-key', 'api-key']
+
+  const combos = []
+  if (cachedCombo) combos.push(cachedCombo)
+  for (const path of [...new Set(paths)]) {
+    for (const style of [...new Set(styles)]) combos.push({ path, style })
+  }
+
+  let lastStatus = null
+  for (const { path, style } of combos) {
+    let r
+    try { r = await tryList(cfg, path, style) } catch { continue }
+    lastStatus = r.status
+    if (r.list) {
+      cachedCombo = { path, style }
+      return r.list.map(normalizePass)
+    }
+  }
+  throw new Error(
+    `No encontré un endpoint para listar pases en AddToWallet (probé varias rutas y estilos de auth; último estado HTTP ${lastStatus}). Es posible que esta API no permita listar todos los pases — habría que confirmarlo con su soporte/docs.`,
+  )
 }
 
 /** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */
