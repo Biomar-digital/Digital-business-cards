@@ -120,8 +120,8 @@ export async function getQrDetail(cfg, id) {
 }
 
 /**
- * Diagnóstico: trae el detalle de la PRIMERA vCard probando varias rutas, para
- * ver cómo viene la info (company, email, phone, etc.) y mapear todos los campos.
+ * Diagnóstico: trae el detalle COMPLETO de la primera vCard (quitando las URLs
+ * de imagen, que son enormes y tapan el resto) para ver todos los campos.
  */
 export async function sampleVcardDetail(cfg) {
   if (!canReadLive(cfg)) return { note: 'Sin API key' }
@@ -130,21 +130,27 @@ export async function sampleVcardDetail(cfg) {
   const vcard = list.find((x) => x.type_id === 12 || /vcard/i.test(x.type_name || ''))
   if (!vcard) return { note: 'No se encontró ninguna vCard' }
 
-  const attempts = []
-  for (const path of [`/codes/${vcard.id}`, `/codes/${vcard.id}/content`, `/vcard/${vcard.id}`]) {
+  const slim = (obj) => {
+    if (!obj || typeof obj !== 'object') return obj
+    const out = Array.isArray(obj) ? [] : {}
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === 'string' && (k.includes('image') || v.length > 300)) out[k] = '[omitted]'
+      else if (v && typeof v === 'object') out[k] = slim(v)
+      else out[k] = v
+    }
+    return out
+  }
+
+  const result = { qrId: vcard.id, name: vcard.title }
+  for (const path of [`/codes/${vcard.id}`, `/codes/${vcard.id}/content`, `/codes/${vcard.id}/data`]) {
     try {
-      const res = await fetch(
-        `${cfg.qrCode.baseUrl}${path}?access-token=${encodeURIComponent(cfg.qrCode.apiKey)}`,
-        { headers: { 'Content-Type': 'application/json' } },
-      )
-      const text = await res.text()
-      attempts.push({ path, status: res.status, body: text.slice(0, 1500) })
-      if (res.ok) break
+      const detail = await apiFetch(cfg, path)
+      result[path] = slim(detail)
     } catch (e) {
-      attempts.push({ path, error: String(e.message ?? e) })
+      result[path] = String(e.message ?? e)
     }
   }
-  return { qrId: vcard.id, name: vcard.title, attempts }
+  return result
 }
 
 /** Crea un QR DINÁMICO cuyo destino es la URL del pase. */
