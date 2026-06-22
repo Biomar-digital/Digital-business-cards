@@ -108,10 +108,9 @@ api.get('/passes/debug', async (c) => c.json(await wallet.debugList(getConfig(c.
 
 // ── Directorio de personas (contactos extraídos de las vCards) ──
 api.get('/people', async (c) => c.json(await contacts.listContacts(c.env.DB)))
-api.post('/people/sync', async (c) => {
-  const force = c.req.query('force') === '1'
-  return c.json(await contacts.syncContacts(getConfig(c.env), c.env.DB, { force }))
-})
+api.post('/people/index', async (c) => c.json(await contacts.indexPeople(getConfig(c.env), c.env.DB)))
+api.post('/people/sync', async (c) => c.json(await contacts.syncBatch(getConfig(c.env), c.env.DB)))
+api.post('/people/reset', async (c) => c.json(await contacts.resetSync(c.env.DB)))
 
 // ── Plantillas dinámicas (AddToWallet) ──
 api.get('/templates', async (c) => c.json(await wallet.listTemplates(getConfig(c.env))))

@@ -47,5 +47,7 @@ export const api = {
   listTemplates: () => request('/templates'),
 
   listPeople: () => request('/people'),
-  syncPeople: (force) => request(`/people/sync${force ? '?force=1' : ''}`, { method: 'POST' }),
+  indexPeople: () => request('/people/index', { method: 'POST' }),
+  syncPeople: () => request('/people/sync', { method: 'POST' }),
+  resetPeople: () => request('/people/reset', { method: 'POST' }),
 }

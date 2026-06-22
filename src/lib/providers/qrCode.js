@@ -190,14 +190,16 @@ export async function inspectVcardPage(cfg) {
 }
 
 // Extrae un campo "key":"value" del objeto de datos embebido en la landing.
+// Captura la cadena JSON completa y la decodifica con JSON.parse (maneja
+// \uXXXX, \n, \", etc. correctamente).
 function vcardField(html, key) {
-  const m = html.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`))
+  const m = html.match(new RegExp(`"${key}"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*")`))
   if (!m) return null
-  return m[1]
-    .replace(/\\\//g, '/')
-    .replace(/\\u0026/g, '&')
-    .replace(/\\"/g, '"')
-    .trim() || null
+  try {
+    return JSON.parse(m[1]).trim() || null
+  } catch {
+    return null
+  }
 }
 
 /** Pide la landing del vCard (short_url) y devuelve el contacto parseado. */

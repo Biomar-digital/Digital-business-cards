@@ -1,7 +1,9 @@
 import { getVcardLanding, listQrCodes } from './providers/qrCode.js'
 
 // Directorio de personas: contactos extraídos de las vCards de qr-code-generator,
-// cacheados en D1. Se sincroniza bajo demanda para no inflar los scans.
+// cacheados en D1. Dos fases para escalar a cientos sin agotar subrequests:
+//  1) indexPeople: lista TODOS los QR vCard una vez y crea filas base.
+//  2) syncBatch: baja la landing de un lote de filas sin datos y las completa.
 
 export async function listContacts(DB) {
   const { results } = await DB.prepare(
@@ -10,59 +12,78 @@ export async function listContacts(DB) {
   return results
 }
 
-const upsert = `
-  INSERT INTO contacts (qr_id, short_code, short_url, full_name, first_name, last_name,
-    company, job, email, mobile, phone, website, city, country, folder_id, folder_name,
-    total_scans, unique_scans, created_at, synced_at)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
+const insertBase = `
+  INSERT INTO contacts (qr_id, short_code, short_url, full_name, folder_id, folder_name,
+    total_scans, unique_scans, created_at)
+  VALUES (?,?,?,?,?,?,?,?,?)
   ON CONFLICT(qr_id) DO UPDATE SET
-    full_name=excluded.full_name, first_name=excluded.first_name, last_name=excluded.last_name,
-    company=excluded.company, job=excluded.job, email=excluded.email, mobile=excluded.mobile,
-    phone=excluded.phone, website=excluded.website, city=excluded.city, country=excluded.country,
-    folder_id=excluded.folder_id, folder_name=excluded.folder_name,
-    total_scans=excluded.total_scans, unique_scans=excluded.unique_scans, synced_at=datetime('now')
+    short_url=excluded.short_url, folder_id=excluded.folder_id, folder_name=excluded.folder_name,
+    total_scans=excluded.total_scans, unique_scans=excluded.unique_scans
 `
 
-/**
- * Sincroniza contactos: por cada vCard que aún no está cacheada (o todas si
- * force), pide la landing, parsea el contacto y lo guarda. Limita el lote para
- * no superar el tope de subrequests del Worker.
- */
-export async function syncContacts(cfg, DB, { limit = 40, force = false } = {}) {
+/** Fase 1: lista todas las vCards y crea/actualiza filas base (sin landing). */
+export async function indexPeople(cfg, DB) {
   const people = (await listQrCodes(cfg)).filter((x) => x.isPerson && x.shortUrl)
-  const { results } = await DB.prepare('SELECT qr_id FROM contacts').all()
-  const have = new Set(results.map((r) => String(r.qr_id)))
+  for (const qr of people) {
+    await DB.prepare(insertBase)
+      .bind(
+        String(qr.id),
+        qr.shortUrl ? qr.shortUrl.split('/').pop() : null,
+        qr.shortUrl,
+        qr.name || null,
+        qr.folder != null ? String(qr.folder) : null,
+        qr.folderName || null,
+        qr.scans ?? 0,
+        qr.uniqueScans ?? 0,
+        qr.createdAt || null,
+      )
+      .run()
+  }
+  const { results } = await DB.prepare('SELECT COUNT(*) AS n FROM contacts WHERE synced_at IS NULL').all()
+  return { indexed: people.length, pending: results[0]?.n ?? 0 }
+}
 
-  const todo = people.filter((x) => force || !have.has(String(x.id))).slice(0, limit)
+const updateContact = `
+  UPDATE contacts SET full_name=?, first_name=?, last_name=?, company=?, job=?, email=?,
+    mobile=?, phone=?, website=?, city=?, country=?, synced_at=datetime('now')
+  WHERE qr_id=?
+`
+
+/** Fase 2: baja la landing de hasta `limit` filas pendientes y las completa. */
+export async function syncBatch(cfg, DB, { limit = 40 } = {}) {
+  const { results: rows } = await DB.prepare(
+    'SELECT qr_id, short_url, full_name FROM contacts WHERE synced_at IS NULL LIMIT ?',
+  )
+    .bind(limit)
+    .all()
+
   let synced = 0
-  for (const qr of todo) {
+  for (const row of rows) {
     try {
-      const c = await getVcardLanding(cfg, qr.shortUrl)
-      await DB.prepare(upsert)
+      const c = await getVcardLanding(cfg, row.short_url)
+      await DB.prepare(updateContact)
         .bind(
-          String(qr.id),
-          qr.shortUrl ? qr.shortUrl.split('/').pop() : null,
-          qr.shortUrl,
-          c.fullName || qr.name || null,
+          c.fullName || row.full_name || null,
           c.firstName, c.lastName, c.company, c.job, c.email, c.mobile, c.phone,
           c.website, c.city, c.country,
-          qr.folder != null ? String(qr.folder) : null,
-          qr.folderName || null,
-          qr.scans ?? 0,
-          qr.uniqueScans ?? 0,
-          qr.createdAt || null,
+          String(row.qr_id),
         )
         .run()
       synced++
     } catch {
-      // si una landing falla, seguimos con las demás
+      // si una landing falla, la marcamos igual para no reintentar en bucle
+      await DB.prepare("UPDATE contacts SET synced_at=datetime('now') WHERE qr_id=?")
+        .bind(String(row.qr_id))
+        .run()
     }
   }
 
-  const cachedNow = have.size + (force ? 0 : synced)
-  return {
-    synced,
-    totalPeople: people.length,
-    remaining: Math.max(0, people.length - cachedNow),
-  }
+  const { results } = await DB.prepare('SELECT COUNT(*) AS n FROM contacts WHERE synced_at IS NULL').all()
+  return { synced, remaining: results[0]?.n ?? 0 }
+}
+
+/** Marca todo para re-sincronizar (vuelve a bajar las landings). */
+export async function resetSync(DB) {
+  await DB.prepare('UPDATE contacts SET synced_at=NULL').run()
+  return { ok: true }
 }

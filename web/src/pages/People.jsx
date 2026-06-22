@@ -12,13 +12,25 @@ export default function People() {
   const load = () => api.listPeople().then(setPeople).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
 
-  async function sync(force) {
+  // Indexa todas las vCards y luego baja las landings por lotes hasta terminar.
+  async function sync(reset) {
     setBusy(true)
-    setMsg('')
+    setMsg('Indexing…')
     try {
-      const r = await api.syncPeople(force)
-      setMsg(`Synced ${r.synced} · ${r.remaining} remaining of ${r.totalPeople}`)
-      await load()
+      if (reset) await api.resetPeople()
+      const idx = await api.indexPeople()
+      let remaining = idx.pending
+      let done = 0
+      // Bucle de lotes hasta que no quede ninguno pendiente.
+      for (let i = 0; i < 50; i++) {
+        const r = await api.syncPeople()
+        done += r.synced
+        remaining = r.remaining
+        setMsg(`Synced ${done}… ${remaining} remaining`)
+        await load()
+        if (remaining === 0 || r.synced === 0) break
+      }
+      setMsg(`Done. ${done} synced, ${remaining} remaining.`)
     } catch (e) {
       setMsg('Error: ' + (e.message || e))
     } finally {
