@@ -57,20 +57,29 @@ function normalizePass(x) {
   }
 }
 
-function extractList(data) {
-  if (Array.isArray(data)) return data
-  return data.cards ?? data.passes ?? data.data ?? data.items ?? data.results ?? []
-}
-
-// Devuelve el array de pases si la respuesta TIENE forma de lista, o null si no
-// lo es (evita aceptar por error un 200 que no sea un listado).
+// Extrae el array de pases. La API responde { msg, data: { passes: [...] } },
+// pero contemplamos también variantes al nivel superior.
 function asList(data) {
   if (Array.isArray(data)) return data
   if (data && typeof data === 'object') {
-    const v = data.cards ?? data.passes ?? data.data ?? data.items ?? data.results
-    if (Array.isArray(v)) return v
+    const direct = data.cards ?? data.passes ?? data.items ?? data.results
+    if (Array.isArray(direct)) return direct
+    const d = data.data
+    if (d && typeof d === 'object') {
+      const nested = d.passes ?? d.cards ?? d.items ?? d.results
+      if (Array.isArray(nested)) return nested
+    }
   }
   return null
+}
+
+function extractList(data) {
+  return asList(data) ?? []
+}
+
+// Info de paginación (anidada bajo data o al nivel superior).
+function paginationOf(data) {
+  return data?.data?.pagination ?? data?.pagination ?? null
 }
 
 function headersForStyle(cfg, style) {
@@ -81,23 +90,10 @@ function headersForStyle(cfg, style) {
   return { Authorization: `Bearer ${key}` }
 }
 
-// URL+estilo que funcionó, cacheado por isolate.
-let cachedHit = null
-
-async function tryUrl(cfg, url, style) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...headersForStyle(cfg, style) },
-  })
-  const text = await res.text()
-  let data = null
-  try { data = text ? JSON.parse(text) : null } catch { data = null }
-  return { status: res.status, list: res.ok ? asList(data) : null, snippet: text.slice(0, 180) }
-}
-
 /**
- * Lista TODOS los pases (GET /api/card/get, respuesta { cards: [...] }). Prueba
- * los dos hosts (app./api.) por si uno falla. Si nada funciona, el error
- * incluye un diagnóstico con lo que devolvió cada intento (status + cuerpo).
+ * Lista TODOS los pases: GET /api/card/get (cabecera apikey). La respuesta es
+ * { msg, data: { passes: [...], pagination: {...} } }. Recorre todas las
+ * páginas para traer el total.
  */
 export async function listPasses(cfg) {
   if (!canReadLive(cfg)) {
@@ -107,36 +103,15 @@ export async function listPasses(cfg) {
     ]
   }
 
-  const candidates = []
-  if (cachedHit) candidates.push(cachedHit)
-  candidates.push(
-    { url: `${cfg.addToWallet.baseUrl}${cfg.addToWallet.listPath}`, style: cfg.addToWallet.authStyle },
-    { url: 'https://app.addtowallet.co/api/card/get', style: 'apikey' },
-    { url: 'https://api.addtowallet.co/api/card/get', style: 'apikey' },
-    { url: 'https://app.addtowallet.co/card/get', style: 'apikey' },
-    { url: 'https://app.addtowallet.co/api/card/get', style: 'bearer' },
-  )
-
-  const seen = new Set()
-  const attempts = []
-  for (const c of candidates) {
-    const key = `${c.url}|${c.style}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    let r
-    try {
-      r = await tryUrl(cfg, c.url, c.style)
-    } catch (e) {
-      attempts.push({ url: c.url, style: c.style, error: String(e.message ?? e) })
-      continue
-    }
-    attempts.push({ url: c.url, style: c.style, status: r.status, snippet: r.snippet })
-    if (r.list) {
-      cachedHit = c
-      return r.list.map(normalizePass)
-    }
+  const all = []
+  for (let page = 1; page <= 50; page++) {
+    const data = await apiFetch(cfg, `${cfg.addToWallet.listPath}?page=${page}`)
+    const list = asList(data) || []
+    all.push(...list)
+    const totalPages = paginationOf(data)?.totalPages ?? 1
+    if (list.length === 0 || page >= totalPages) break
   }
-  throw new Error('No pude listar pases. Diagnóstico por intento: ' + JSON.stringify(attempts))
+  return all.map(normalizePass)
 }
 
 /** Devuelve la respuesta cruda del listado (para calibrar el mapeo). */
