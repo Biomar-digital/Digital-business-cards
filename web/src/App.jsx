@@ -8,6 +8,7 @@ import Groups from './pages/Groups.jsx'
 import NewCard from './pages/NewCard.jsx'
 import Passes from './pages/Passes.jsx'
 import People from './pages/People.jsx'
+import Requests from './pages/Requests.jsx'
 import QrCodes from './pages/QrCodes.jsx'
 import Templates from './pages/Templates.jsx'
 
@@ -107,6 +108,7 @@ export default function App() {
           <NavLink to="/qr">QR codes</NavLink>
           <NavLink to="/people">People</NavLink>
           <NavLink to="/templates">Templates</NavLink>
+          <NavLink to="/requests">Requests</NavLink>
           <NavLink to="/groups">Groups</NavLink>
           <NavLink to="/new">New card</NavLink>
         </nav>
@@ -129,6 +131,7 @@ export default function App() {
           <Route path="/qr" element={<QrCodes />} />
           <Route path="/people" element={<People />} />
           <Route path="/templates" element={<Templates />} />
+          <Route path="/requests" element={<Requests />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/new" element={<NewCard />} />
         </Routes>

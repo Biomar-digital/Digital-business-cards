@@ -67,6 +67,18 @@ const STATEMENTS = [
     synced_at    TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company)`,
+  `CREATE TABLE IF NOT EXISTS change_requests (
+    id          TEXT PRIMARY KEY,
+    qr_id       TEXT,
+    full_name   TEXT,
+    company     TEXT,
+    job         TEXT,
+    email       TEXT,
+    phone       TEXT,
+    message     TEXT,
+    status      TEXT NOT NULL DEFAULT 'open',
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ]
 
 // Columnas añadidas después (ALTER no es idempotente: se ignora si ya existe).

@@ -119,7 +119,7 @@ export async function createPassesBatch(cfg, DB, qrIds, { limit = 25, sendEmail 
       created++
       if (sendEmail && c.email && r.passUrl) {
         try {
-          await sendIntroEmail(cfg, { name: c.full_name, email: c.email, passUrl: r.passUrl })
+          await sendIntroEmail(cfg, { name: c.full_name, email: c.email, passUrl: r.passUrl, qrId: c.qr_id })
           emailed++
         } catch (e) {
           errors.push({ name: c.full_name, error: 'email: ' + String(e.message ?? e).slice(0, 160) })

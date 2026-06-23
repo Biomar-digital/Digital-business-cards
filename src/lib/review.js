@@ -1,0 +1,106 @@
+import { nanoid } from 'nanoid'
+
+// Página pública de "revisá tu tarjeta" + solicitud de cambios, y su almacén.
+
+export function getContact(DB, qrId) {
+  return DB.prepare('SELECT * FROM contacts WHERE qr_id = ?').bind(String(qrId)).first()
+}
+
+export async function saveChangeRequest(DB, qrId, form) {
+  await DB.prepare(
+    `INSERT INTO change_requests (id, qr_id, full_name, company, job, email, phone, message)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      `req_${nanoid(8)}`, String(qrId),
+      form.full_name || null, form.company || null, form.job || null,
+      form.email || null, form.phone || null, form.message || null,
+    )
+    .run()
+  return { ok: true }
+}
+
+export async function listChangeRequests(DB) {
+  const { results } = await DB.prepare('SELECT * FROM change_requests ORDER BY created_at DESC').all()
+  return results
+}
+
+export async function updateRequestStatus(DB, id, status) {
+  await DB.prepare('UPDATE change_requests SET status = ? WHERE id = ?').bind(status, id).run()
+  return { ok: true }
+}
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]))
+
+const shell = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/><title>${esc(title)}</title>
+<style>
+  :root{--blue:#1f3e77;--ink:#16263d;--muted:#647890;--line:#dce6f0}
+  *{box-sizing:border-box} body{margin:0;background:#eef3f8;font-family:'Segoe UI',Arial,sans-serif;color:var(--ink)}
+  .wrap{max-width:560px;margin:0 auto;padding:24px 16px}
+  .card{background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(22,38,61,.08);overflow:hidden}
+  .head{background:var(--blue);color:#fff;padding:22px 26px}
+  .logo{height:30px;display:block}
+  .body{padding:24px 26px}
+  h1{font-size:20px;margin:0 0 4px} h2{font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin:22px 0 8px}
+  .muted{color:var(--muted)} .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;gap:12px}
+  .row b{color:var(--muted);font-weight:600} a.btn,button.btn{display:inline-block;background:var(--blue);color:#fff;border:none;text-decoration:none;font-size:15px;font-weight:700;padding:12px 22px;border-radius:10px;cursor:pointer}
+  a.link{color:var(--blue)} label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit}
+  .foot{background:#f5f9fd;border-top:1px solid var(--line);padding:16px 26px;color:var(--muted);font-size:12px}
+</style></head><body><div class="wrap"><div class="card">
+  <div class="head"><img class="logo" src="/biomar-logo.png" alt="BioMar"/></div>
+  ${body}
+  <div class="foot">Powered by Partnership. Driven by Innovation.<br/>BioMar — Digital Business Cards</div>
+</div></div></body></html>`
+
+export function reviewPageHtml(c) {
+  const phone = c.mobile || c.phone
+  const field = (label, name, value, type = 'text') =>
+    `<label>${label}</label><input type="${type}" name="${name}" value="${esc(value)}"/>`
+  return shell('Review your BioMar card', `
+  <div class="body">
+    <h1>Hi ${esc(c.full_name || 'there')},</h1>
+    <p class="muted">Please review your digital business card details below — both your <b>Wallet card</b> and your <b>QR / vCard</b>. If anything is wrong, request a change at the bottom.</p>
+
+    <h2>Your details</h2>
+    <div class="row"><b>Name</b><span>${esc(c.full_name) || '—'}</span></div>
+    <div class="row"><b>Company</b><span>${esc(c.company) || '—'}</span></div>
+    <div class="row"><b>Job title</b><span>${esc(c.job) || '—'}</span></div>
+    <div class="row"><b>Email</b><span>${esc(c.email) || '—'}</span></div>
+    <div class="row"><b>Phone</b><span>${esc(phone) || '—'}</span></div>
+    <div class="row"><b>Country</b><span>${esc(c.country) || '—'}</span></div>
+
+    <h2>Open & check</h2>
+    <p style="display:flex;gap:10px;flex-wrap:wrap">
+      ${c.pass_url ? `<a class="btn" href="${esc(c.pass_url)}" target="_blank">Open Wallet card</a>` : ''}
+      ${c.short_url ? `<a class="link" href="${esc(c.short_url)}" target="_blank" style="align-self:center">Open your QR / vCard ↗</a>` : ''}
+    </p>
+
+    <h2>Request a change</h2>
+    <p class="muted">Edit anything that's incorrect and send it to us.</p>
+    <form method="POST">
+      ${field('Name', 'full_name', c.full_name)}
+      ${field('Company', 'company', c.company)}
+      ${field('Job title', 'job', c.job)}
+      ${field('Email', 'email', c.email, 'email')}
+      ${field('Phone', 'phone', phone)}
+      <label>Notes / what to change</label><textarea name="message" rows="3" placeholder="Tell us what to update…"></textarea>
+      <div style="margin-top:14px"><button class="btn" type="submit">Send change request</button></div>
+    </form>
+  </div>`)
+}
+
+export function thankYouHtml() {
+  return shell('Thank you', `<div class="body">
+    <h1>Thanks! ✅</h1>
+    <p class="muted">We received your change request. The BioMar team will review and update your digital card.</p>
+  </div>`)
+}
+
+export function notFoundHtml() {
+  return shell('Not found', `<div class="body">
+    <h1>Card not found</h1>
+    <p class="muted">This review link is not valid. Please contact the BioMar team.</p>
+  </div>`)
+}

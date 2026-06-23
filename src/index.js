@@ -6,6 +6,7 @@ import { getConfig } from './lib/config.js'
 import * as contacts from './lib/contacts.js'
 import { ensureSchema } from './lib/db.js'
 import { introEmailHtml } from './lib/email.js'
+import * as review from './lib/review.js'
 import * as wallet from './lib/providers/addToWallet.js'
 import * as qr from './lib/providers/qrCode.js'
 
@@ -112,6 +113,13 @@ api.get('/people', async (c) => c.json(await contacts.listContacts(c.env.DB)))
 api.post('/people/index', async (c) => c.json(await contacts.indexPeople(getConfig(c.env), c.env.DB)))
 api.post('/people/sync', async (c) => c.json(await contacts.syncBatch(getConfig(c.env), c.env.DB)))
 api.post('/people/reset', async (c) => c.json(await contacts.resetSync(c.env.DB)))
+
+// ── Solicitudes de cambio (de la página pública de revisión) ──
+api.get('/requests', async (c) => c.json(await review.listChangeRequests(c.env.DB)))
+api.post('/requests/:id/status', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return c.json(await review.updateRequestStatus(c.env.DB, c.req.param('id'), body.status || 'done'))
+})
 api.post('/people/passes', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   return c.json(
@@ -151,9 +159,27 @@ export default {
     if (url.pathname === '/email-preview') {
       const name = url.searchParams.get('name') || 'Nerea Clemente'
       const passUrl = url.searchParams.get('passUrl') || 'https://app.addtowallet.co/card/EXAMPLE'
-      return new Response(introEmailHtml({ name, passUrl }), {
-        headers: { 'content-type': 'text/html; charset=utf-8' },
-      })
+      return new Response(
+        introEmailHtml({ name, passUrl, reviewUrl: `${url.origin}/review/EXAMPLE`, logoUrl: `${url.origin}/biomar-logo.png` }),
+        { headers: { 'content-type': 'text/html; charset=utf-8' } },
+      )
+    }
+    // Página pública de revisión / solicitud de cambios.
+    if (url.pathname.startsWith('/review/')) {
+      const id = decodeURIComponent(url.pathname.split('/')[2] || '')
+      await ensureSchema(env.DB)
+      const html = (h, status = 200) => new Response(h, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
+      if (id === 'EXAMPLE') {
+        return html(review.reviewPageHtml({ full_name: 'Nerea Clemente', company: 'BioMar Group', job: 'Content Creator', email: 'nerpa@biomar.com', mobile: '+45 25505010', country: 'Denmark', pass_url: 'https://app.addtowallet.co/card/EXAMPLE', short_url: 'https://qrco.de/bgp5bV' }))
+      }
+      const contact = await review.getContact(env.DB, id)
+      if (!contact) return html(review.notFoundHtml(), 404)
+      if (request.method === 'POST') {
+        const form = await request.formData()
+        await review.saveChangeRequest(env.DB, id, Object.fromEntries([...form.entries()]))
+        return html(review.thankYouHtml())
+      }
+      return html(review.reviewPageHtml(contact))
     }
     // Servir el panel compilado (web/dist) vía el binding ASSETS. Para rutas
     // del cliente (react-router) que no son un fichero, devolvemos index.html.
