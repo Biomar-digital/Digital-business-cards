@@ -85,11 +85,17 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   const sectionTitle = (t) => `<div style="font-size:13px;font-weight:700;color:${blue};text-transform:uppercase;letter-spacing:.6px;margin:6px 0 12px">${t}</div>`
 
   return wrap(`
-    <tr><td style="background:${blue};padding:24px 32px" align="left">
-      ${logoUrl
-        ? `<img src="${logoUrl}" alt="BioMar" height="40" style="height:40px;display:block"/>`
-        : `<span style="color:#fff;font-size:24px;font-weight:800">Bio<span style="color:${light}">Mar</span></span>`}
-      <div style="color:#c7dbf0;font-size:13px;margin-top:8px;letter-spacing:.3px">Digital Business Card</div>
+    <tr><td style="background:${blue};padding:22px 32px">
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td valign="middle">
+          ${logoUrl
+            ? `<img src="${logoUrl}" alt="BioMar" height="48" style="height:48px;display:block"/>`
+            : `<span style="color:#fff;font-size:26px;font-weight:800">Bio<span style="color:${light}">Mar</span></span>`}
+        </td>
+        <td valign="middle" style="padding-left:16px;border-left:1px solid rgba(255,255,255,.25)">
+          <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px;padding-left:16px">Digital Business Card</div>
+        </td>
+      </tr></table>
     </td></tr>
 
     <tr><td style="padding:0;font-size:0;line-height:0">
