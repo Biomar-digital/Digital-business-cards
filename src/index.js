@@ -5,6 +5,7 @@ import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
 import * as contacts from './lib/contacts.js'
 import { ensureSchema } from './lib/db.js'
+import { introEmailHtml } from './lib/email.js'
 import * as wallet from './lib/providers/addToWallet.js'
 import * as qr from './lib/providers/qrCode.js'
 
@@ -145,6 +146,14 @@ export default {
     const url = new URL(request.url)
     if (url.pathname.startsWith('/api')) {
       return api.fetch(request, env, ctx)
+    }
+    // Preview público del email de introducción (para iterar el diseño).
+    if (url.pathname === '/email-preview') {
+      const name = url.searchParams.get('name') || 'Nerea Clemente'
+      const passUrl = url.searchParams.get('passUrl') || 'https://app.addtowallet.co/card/EXAMPLE'
+      return new Response(introEmailHtml({ name, passUrl }), {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
     }
     // Servir el panel compilado (web/dist) vía el binding ASSETS. Para rutas
     // del cliente (react-router) que no son un fichero, devolvemos index.html.

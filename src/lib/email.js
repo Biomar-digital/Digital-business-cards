@@ -52,7 +52,7 @@ export async function sendCardEmail(cfg, card) {
 
 // Email de introducción a la tarjeta digital (HTML branded BioMar), con
 // beneficios, cómo usarla y el botón para agregarla al Wallet.
-function introEmailHtml({ name, passUrl }) {
+export function introEmailHtml({ name, passUrl }) {
   const blue = '#1f3e77'
   const benefit = (t) => `<tr><td style="padding:6px 0;color:#2d3748;font-size:14px;line-height:1.5">✓ ${t}</td></tr>`
   return `
