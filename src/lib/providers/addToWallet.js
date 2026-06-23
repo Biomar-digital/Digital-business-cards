@@ -338,6 +338,56 @@ export async function createTestPass(cfg, barcodeValue) {
   return { status: res.status, ok: res.ok, response: json ?? text.slice(0, 600), sentDesign: design }
 }
 
+/**
+ * Crea un pase de EJEMPLO con el template real (logo/hero/colores tomados de un
+ * pase existente) y datos de muestra ("BioMar Employee"). Devuelve el link del
+ * pase para abrirlo y hacerle screenshot. Pensado para mockups.
+ */
+export async function createExamplePass(cfg) {
+  const design = await getTemplateDesign(cfg)
+  const payload = {
+    cardTitle: 'BioMar Group',
+    header: 'Alex Johansen',
+    subheader: 'BioMar Employee',
+    logoUrl: design.logoUrl,
+    heroImage: design.heroImage,
+    googleHeroImage: design.googleHeroImage || design.heroImage,
+    appleHeroImage: design.appleHeroImage || design.heroImage,
+    hexBackgroundColor: design.hexBackgroundColor || '#1c4077',
+    appleFontColor: design.appleFontColor || '#ffffff',
+    barcodeType: 'QR_CODE',
+    barcodeValue: 'https://www.biomar.com',
+    barcodeAltText: 'Scan to save my contact',
+    textModulesData: [
+      { id: 'r1start', header: 'Email', body: 'alex.johansen@biomar.com' },
+      { id: 'r1end', header: 'Phone', body: '+45 25 50 50 10' },
+    ],
+    linksModuleData: [
+      { id: 'r1', description: 'Call', uri: 'tel:+4525505010' },
+      { id: 'r2', description: 'Email', uri: 'mailto:alex.johansen@biomar.com' },
+      { id: 'r3', description: 'Website', uri: 'https://www.biomar.com' },
+    ],
+  }
+  const res = await fetch(`${cfg.addToWallet.baseUrl}/card/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(cfg) },
+    body: JSON.stringify(payload),
+  })
+  const text = await res.text()
+  let json = null
+  try { json = JSON.parse(text) } catch { /* texto */ }
+  const id = json?.cardId ?? json?.id ?? json?._id ?? json?.card?._id ?? null
+  return {
+    status: res.status,
+    ok: res.ok,
+    cardId: id,
+    passUrl: json?.shareUrl ?? json?.url ?? (id ? `https://app.addtowallet.co/card/${id}` : null),
+    passGeneratorUrl: id ? `https://app.addtowallet.co/passGenerator/${id}` : null,
+    usedDesign: design,
+    response: json ?? text.slice(0, 600),
+  }
+}
+
 /** PRUEBA: borra un pase creado en la prueba (para limpiar). */
 export async function deleteTestPass(cfg, id) {
   for (const path of [`/card/delete/${id}`, `/card/${id}`, '/card/delete']) {

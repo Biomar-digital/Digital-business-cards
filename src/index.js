@@ -136,6 +136,9 @@ api.post('/test/create-card', async (c) => {
   return c.json({ qr: qrRes })
 })
 
+// ── PRUEBA: crear un pase de EJEMPLO con el template real (para mockups) ──
+api.post('/test/create-pass', async (c) => c.json(await wallet.createExamplePass(getConfig(c.env))))
+
 // ── Plantillas dinámicas (AddToWallet) ──
 api.get('/templates', async (c) => c.json(await wallet.listTemplates(getConfig(c.env))))
 api.get('/templates/raw', async (c) => c.json(await wallet.listTemplatesRaw(getConfig(c.env))))

@@ -6,6 +6,20 @@ export default function Passes() {
   const [error, setError] = useState('')
   const [debug, setDebug] = useState(null)
   const [q, setQ] = useState('')
+  const [example, setExample] = useState(null)
+  const [creating, setCreating] = useState(false)
+
+  async function makeExample() {
+    setCreating(true)
+    setExample(null)
+    try {
+      setExample(await api.createExamplePass())
+    } catch (e) {
+      setExample({ error: String(e.message || e) })
+    } finally {
+      setCreating(false)
+    }
+  }
 
   useEffect(() => {
     api.listPasses().then(setPasses).catch((e) => {
@@ -23,16 +37,45 @@ export default function Passes() {
     <>
       <div className="page-head">
         <h1>Wallet passes ({passes ? passes.length : '…'})</h1>
-        <input
-          placeholder="Search by name…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          style={{ maxWidth: 240 }}
-        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn secondary" onClick={makeExample} disabled={creating}>
+            {creating ? 'Creating…' : 'Create example pass'}
+          </button>
+          <input
+            placeholder="Search by name…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            style={{ maxWidth: 240 }}
+          />
+        </div>
       </div>
       <p className="muted" style={{ marginTop: -10 }}>
         All Apple/Google Wallet passes from the AddToWallet account.
       </p>
+
+      {example && (
+        <div className="card" style={{ marginTop: 12, borderColor: example.error ? 'var(--red)' : undefined }}>
+          {example.error ? (
+            <>⚠️ {example.error}</>
+          ) : (
+            <>
+              <b>Example pass created with the real template</b> — open it and take a screenshot:
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                {example.passGeneratorUrl && (
+                  <a href={example.passGeneratorUrl} target="_blank" rel="noreferrer">Open pass preview ↗</a>
+                )}
+                {example.passUrl && (
+                  <a href={example.passUrl} target="_blank" rel="noreferrer">Add-to-Wallet link ↗</a>
+                )}
+                {example.cardId && <span className="muted">id: {example.cardId}</span>}
+              </div>
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, marginBottom: 0, marginTop: 10 }}>
+                {JSON.stringify(example, null, 2)}
+              </pre>
+            </>
+          )}
+        </div>
+      )}
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
       {debug && (

@@ -53,6 +53,7 @@ export const api = {
   createPasses: (qrIds, sendEmail) => request('/people/passes', { method: 'POST', body: { qrIds, sendEmail } }),
 
   createTestCard: () => request('/test/create-card', { method: 'POST' }),
+  createExamplePass: () => request('/test/create-pass', { method: 'POST' }),
 
   listRequests: () => request('/requests'),
   resolveRequest: (id) => request(`/requests/${id}/status`, { method: 'POST', body: { status: 'done' } }),
