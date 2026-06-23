@@ -113,7 +113,11 @@ api.post('/people/sync', async (c) => c.json(await contacts.syncBatch(getConfig(
 api.post('/people/reset', async (c) => c.json(await contacts.resetSync(c.env.DB)))
 api.post('/people/passes', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  return c.json(await contacts.createPassesBatch(getConfig(c.env), c.env.DB, body.qrIds || []))
+  return c.json(
+    await contacts.createPassesBatch(getConfig(c.env), c.env.DB, body.qrIds || [], {
+      sendEmail: Boolean(body.sendEmail),
+    }),
+  )
 })
 
 // ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──

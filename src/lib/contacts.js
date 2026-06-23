@@ -1,4 +1,5 @@
 import { createPassForContact, getTemplateDesign } from './providers/addToWallet.js'
+import { sendIntroEmail } from './email.js'
 import { getVcardLanding, listQrCodes } from './providers/qrCode.js'
 
 // Directorio de personas: contactos extraídos de las vCards de qr-code-generator,
@@ -94,8 +95,8 @@ export async function resetSync(DB) {
  * tienen pase. Cada pase lleva el barcode apuntando al vCard QR de la persona.
  * Procesa hasta `limit` por llamada (tope de subrequests del Worker).
  */
-export async function createPassesBatch(cfg, DB, qrIds, { limit = 25 } = {}) {
-  if (!Array.isArray(qrIds) || qrIds.length === 0) return { created: 0, remaining: 0, errors: [] }
+export async function createPassesBatch(cfg, DB, qrIds, { limit = 25, sendEmail = false } = {}) {
+  if (!Array.isArray(qrIds) || qrIds.length === 0) return { created: 0, emailed: 0, remaining: 0, errors: [] }
   const ids = qrIds.map(String)
   const ph = ids.map(() => '?').join(',')
 
@@ -107,6 +108,7 @@ export async function createPassesBatch(cfg, DB, qrIds, { limit = 25 } = {}) {
 
   const design = await getTemplateDesign(cfg)
   let created = 0
+  let emailed = 0
   const errors = []
   for (const c of rows) {
     try {
@@ -115,6 +117,14 @@ export async function createPassesBatch(cfg, DB, qrIds, { limit = 25 } = {}) {
         .bind(r.passId, r.passUrl, String(c.qr_id))
         .run()
       created++
+      if (sendEmail && c.email && r.passUrl) {
+        try {
+          await sendIntroEmail(cfg, { name: c.full_name, email: c.email, passUrl: r.passUrl })
+          emailed++
+        } catch (e) {
+          errors.push({ name: c.full_name, error: 'email: ' + String(e.message ?? e).slice(0, 160) })
+        }
+      }
     } catch (e) {
       errors.push({ name: c.full_name, error: String(e.message ?? e).slice(0, 200) })
     }
@@ -125,5 +135,5 @@ export async function createPassesBatch(cfg, DB, qrIds, { limit = 25 } = {}) {
   )
     .bind(...ids)
     .all()
-  return { created, remaining: rem[0]?.n ?? 0, errors: errors.slice(0, 5) }
+  return { created, emailed, remaining: rem[0]?.n ?? 0, errors: errors.slice(0, 5) }
 }

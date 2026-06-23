@@ -50,6 +50,7 @@ export default function People() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [selected, setSelected] = useState(() => new Set())
+  const [sendEmail, setSendEmail] = useState(false)
 
   const load = () => api.listPeople().then(setRaw).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
@@ -81,18 +82,18 @@ export default function People() {
     if (!ids.length) return
     setBusy(true); setMsg('Creating wallet passes…')
     try {
-      let created = 0
+      let created = 0, emailed = 0
       for (let i = 0; i < 100; i++) {
-        const r = await api.createPasses(ids)
-        created += r.created
-        setMsg(`Created ${created} passes… ${r.remaining} remaining`)
+        const r = await api.createPasses(ids, sendEmail)
+        created += r.created; emailed += r.emailed || 0
+        setMsg(`Created ${created} passes${sendEmail ? `, ${emailed} emails` : ''}… ${r.remaining} remaining`)
         await load()
         if (r.remaining === 0 || r.created === 0) {
           if (r.errors?.length) setMsg(`Created ${created}. Some failed: ${r.errors[0].error}`)
           break
         }
       }
-      setMsg(`Done. ${created} wallet passes created.`)
+      setMsg(`Done. ${created} passes created${sendEmail ? `, ${emailed} intro emails sent` : ''}.`)
       setSelected(new Set())
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
@@ -169,6 +170,10 @@ export default function People() {
       {people.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
           <span className="muted">Showing <b>{list.length}</b> · {withPass} with pass · <b>{selected.size}</b> selected</span>
+          <label className="checkbox">
+            <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
+            Send intro email
+          </label>
           <button className="btn" disabled={busy || selected.size === 0} onClick={createPasses}>
             Create wallet passes ({selected.size})
           </button>
