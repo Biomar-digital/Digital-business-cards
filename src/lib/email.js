@@ -53,10 +53,11 @@ export async function sendCardEmail(cfg, card) {
 // Email de introducción a la tarjeta digital (HTML branded BioMar): logo,
 // por qué pasamos al sistema, beneficios, cómo usarla, revisar info + pedir
 // cambios, y el botón para agregarla al Wallet.
-export function introEmailHtml({ name, passUrl, reviewUrl, logoUrl }) {
+export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   const blue = '#1f3e77'
   const light = '#82c0e8'
   const ink = '#2d3748'
+  const logoUrl = `${base}/biomar-logo.png`
   const wrap = (inner) => `
   <div style="background:#eef3f8;padding:24px 0;font-family:'Segoe UI',Arial,sans-serif">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
@@ -68,10 +69,12 @@ export function introEmailHtml({ name, passUrl, reviewUrl, logoUrl }) {
 
   const benefit = (icon, title, text) => `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
-      <td width="46" valign="top">
-        <div style="width:38px;height:38px;border-radius:10px;background:#eaf1f8;text-align:center;line-height:38px;font-size:18px">${icon}</div>
+      <td width="52" valign="top">
+        <div style="width:42px;height:42px;border-radius:11px;background:#eaf1f8;text-align:center;line-height:42px">
+          <img src="${base}/icons/${icon}.png" width="22" height="22" alt="" style="vertical-align:middle"/>
+        </div>
       </td>
-      <td valign="top" style="padding-left:6px">
+      <td valign="top" style="padding-left:8px">
         <div style="font-size:15px;font-weight:700;color:#16263d">${title}</div>
         <div style="font-size:14px;color:${ink};line-height:1.5">${text}</div>
       </td>
@@ -88,7 +91,7 @@ export function introEmailHtml({ name, passUrl, reviewUrl, logoUrl }) {
     </td></tr>
 
     <tr><td style="padding:30px 32px 6px">
-      <h1 style="margin:0 0 14px;font-size:22px;color:#16263d">Hi ${name || 'there'} 👋</h1>
+      <h1 style="margin:0 0 14px;font-size:22px;color:#16263d">Hi ${name || 'there'},</h1>
       <p style="margin:0 0 14px;color:${ink};font-size:15px;line-height:1.65">
         We're excited to introduce your <b>BioMar Digital Business Card</b> — your professional identity,
         now living in your phone's Wallet.
@@ -107,11 +110,11 @@ export function introEmailHtml({ name, passUrl, reviewUrl, logoUrl }) {
 
     <tr><td style="padding:22px 32px 4px">
       ${sectionTitle('What you get')}
-      ${benefit('📲', 'Apple &amp; Google Wallet', 'Save it to your phone’s Wallet — no extra app, no account needed.')}
-      ${benefit('🔄', 'Always up to date', 'Job title, contact details or QR can be updated centrally — no reprinting.')}
-      ${benefit('⚡', 'Share in a tap', 'Show your QR and the other person saves your contact in the moment.')}
-      ${benefit('🌱', 'Sustainable', 'Zero paper and ink — supporting BioMar’s environmental commitments.')}
-      ${benefit('🎯', 'Never caught without a card', 'Going to an event? Your card is always with you, on your phone.')}
+      ${benefit('wallet', 'Apple &amp; Google Wallet', 'Save it to your phone’s Wallet — no extra app, no account needed.')}
+      ${benefit('refresh', 'Always up to date', 'Job title, contact details or QR can be updated centrally — no reprinting.')}
+      ${benefit('share', 'Share in a tap', 'Show your QR and the other person saves your contact in the moment.')}
+      ${benefit('leaf', 'Sustainable', 'Zero paper and ink — supporting BioMar’s environmental commitments.')}
+      ${benefit('calendar', 'Never caught without a card', 'Going to an event? Your card is always with you, on your phone.')}
     </td></tr>
 
     <tr><td align="center" style="padding:14px 32px 6px">
@@ -153,7 +156,6 @@ export async function sendIntroEmail(cfg, { name, email, passUrl, qrId }) {
   if (!cfg.email.brevoApiKey) throw new Error('Falta BREVO_API_KEY')
 
   const reviewUrl = qrId ? `${cfg.publicUrl}/review/${qrId}` : null
-  const logoUrl = `${cfg.publicUrl}/biomar-logo.png`
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -162,7 +164,7 @@ export async function sendIntroEmail(cfg, { name, email, passUrl, qrId }) {
       sender: parseSender(cfg.email.from),
       to: [{ email, name: name || undefined }],
       subject: 'Your BioMar Digital Business Card',
-      htmlContent: introEmailHtml({ name, passUrl, reviewUrl, logoUrl }),
+      htmlContent: introEmailHtml({ name, passUrl, reviewUrl, base: cfg.publicUrl }),
     }),
   })
   if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 300)}`)

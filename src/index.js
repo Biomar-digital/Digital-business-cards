@@ -160,7 +160,7 @@ export default {
       const name = url.searchParams.get('name') || 'Nerea Clemente'
       const passUrl = url.searchParams.get('passUrl') || 'https://app.addtowallet.co/card/EXAMPLE'
       return new Response(
-        introEmailHtml({ name, passUrl, reviewUrl: `${url.origin}/review/EXAMPLE`, logoUrl: `${url.origin}/biomar-logo.png` }),
+        introEmailHtml({ name, passUrl, reviewUrl: `${url.origin}/review/EXAMPLE`, base: url.origin }),
         { headers: { 'content-type': 'text/html; charset=utf-8' } },
       )
     }
