@@ -92,6 +92,10 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
       <div style="color:#c7dbf0;font-size:13px;margin-top:8px;letter-spacing:.3px">Digital Business Card</div>
     </td></tr>
 
+    <tr><td style="padding:0;font-size:0;line-height:0">
+      <img src="${base}/email-banner.jpg" alt="BioMar Digital Business Card" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"/>
+    </td></tr>
+
     <tr><td style="padding:30px 32px 6px">
       <h1 style="margin:0 0 14px;font-size:22px;color:#16263d">Hi ${name || 'there'},</h1>
       <p style="margin:0 0 14px;color:${ink};font-size:15px;line-height:1.65">
