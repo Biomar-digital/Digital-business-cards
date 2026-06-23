@@ -3,19 +3,62 @@ import { api } from '../api.js'
 
 const ALL = ''
 
+// Normaliza un nombre (empresa o carpeta) al grupo canónico de BioMar.
+function canonicalGroup(name) {
+  if (!name) return '—'
+  const s = String(name).toLowerCase()
+  const has = (...ks) => ks.some((k) => s.includes(k))
+  if (has('aq1')) return 'AQ1 Systems'
+  if (has('sagun')) return 'BioMar Sagun (Turkey)'
+  if (has('norge', 'norway', 'karm')) return 'BioMar Norway'
+  if (has('iberia', 'spain', 'españa', 'espana')) return 'BioMar Spain'
+  if (has('ooo') || /\bru\b/.test(s) || has('russia')) return 'BioMar Russia'
+  if (has('australia')) return 'BioMar Australia'
+  if (has('chile')) return 'BioMar Chile'
+  if (has('costa rica')) return 'BioMar Costa Rica'
+  if (has('ecuador')) return 'BioMar Ecuador'
+  if (/\buk\b/.test(s) || has('united kingdom')) return 'BioMar UK'
+  if (has('france', 'emea')) return 'BioMar France'
+  if (has('r&d')) return 'BioMar R&D'
+  if (has('sourcing')) return 'BioMar Sourcing'
+  if (has('sustainab')) return 'BioMar Sustainability'
+  if (has('iberia')) return 'BioMar Spain'
+  if (has('biomar')) return 'BioMar Group'
+  return name
+}
+
+// Grupo final: la carpeta si es significativa, si no la empresa; todo normalizado.
+function unifiedGroup(p) {
+  const folder = String(p.folder_name || '').trim()
+  const base = folder && folder !== '1' && !/templates/i.test(folder) ? folder : p.company || ''
+  return canonicalGroup(base)
+}
+
+// Filas de plantilla (nombre "* *" / email "*") que no son personas reales.
+function isPlaceholder(p) {
+  const n = String(p.full_name || '').replace(/\s/g, '')
+  return !n || /^\*+$/.test(n) || p.email === '*'
+}
+
 export default function People() {
-  const [people, setPeople] = useState(null)
+  const [raw, setRaw] = useState(null)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
-  const [company, setCompany] = useState(ALL)
-  const [country, setCountry] = useState(ALL)
   const [group, setGroup] = useState(ALL)
+  const [country, setCountry] = useState(ALL)
+  const [onlyNoPass, setOnlyNoPass] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [selected, setSelected] = useState(() => new Set())
 
-  const load = () => api.listPeople().then(setPeople).catch((e) => setError(String(e.message || e)))
+  const load = () => api.listPeople().then(setRaw).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
+
+  // Personas reales, con su grupo unificado.
+  const people = useMemo(
+    () => (raw || []).filter((p) => !isPlaceholder(p)).map((p) => ({ ...p, _group: unifiedGroup(p) })),
+    [raw],
+  )
 
   async function sync(reset) {
     setBusy(true); setMsg('Indexing…')
@@ -33,7 +76,6 @@ export default function People() {
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
 
-  // Crea wallet passes para los seleccionados (en lotes hasta terminar).
   async function createPasses() {
     const ids = [...selected]
     if (!ids.length) return
@@ -57,23 +99,21 @@ export default function People() {
 
   const facet = (field) => {
     const m = new Map()
-    for (const p of people || []) {
-      if (field !== 'company' && company && (p.company || '—') !== company) continue
+    for (const p of people) {
+      if (field !== 'group' && group && p._group !== group) continue
       if (field !== 'country' && country && (p.country || '—') !== country) continue
-      if (field !== 'group' && group && (p.folder_name || p.folder_id || '—') !== group) continue
-      const key = field === 'company' ? (p.company || '—') : field === 'country' ? (p.country || '—') : (p.folder_name || p.folder_id || '—')
+      const key = field === 'group' ? p._group : (p.country || '—')
       m.set(key, (m.get(key) || 0) + 1)
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }
-  const companies = useMemo(() => facet('company'), [people, country, group])
-  const countries = useMemo(() => facet('country'), [people, company, group])
-  const groups = useMemo(() => facet('group'), [people, company, country])
+  const groups = useMemo(() => facet('group'), [people, country])
+  const countries = useMemo(() => facet('country'), [people, group])
 
-  const list = (people || [])
-    .filter((p) => company === ALL || (p.company || '—') === company)
+  const list = people
+    .filter((p) => group === ALL || p._group === group)
     .filter((p) => country === ALL || (p.country || '—') === country)
-    .filter((p) => group === ALL || (p.folder_name || p.folder_id || '—') === group)
+    .filter((p) => !onlyNoPass || !p.pass_url)
     .filter((p) => !q || `${p.full_name} ${p.email} ${p.company} ${p.job}`.toLowerCase().includes(q.toLowerCase()))
 
   const withPass = list.filter((p) => p.pass_url).length
@@ -86,47 +126,47 @@ export default function People() {
     return n
   })
 
-  const clear = () => { setCompany(ALL); setCountry(ALL); setGroup(ALL); setQ('') }
-  const Select = ({ label, value, onChange, options }) => (
-    <div className="field" style={{ margin: 0, minWidth: 190 }}>
-      <label style={{ marginBottom: 4 }}>{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value={ALL}>All</option>
-        {options.map(([name, count]) => <option key={name} value={name}>{name} ({count})</option>)}
-      </select>
-    </div>
-  )
-
   return (
     <>
       <div className="page-head">
-        <h1>People ({people ? people.length : '…'})</h1>
+        <h1>People ({people.length})</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn secondary" disabled={busy} onClick={() => sync(false)}>{busy ? '…' : 'Sync from QR'}</button>
           <button className="btn secondary" disabled={busy} onClick={() => sync(true)} title="Re-fetch all">Resync all</button>
         </div>
       </div>
-      <p className="muted" style={{ marginTop: -10 }}>
-        Contacts from the vCard QR codes. {msg && <b>{msg}</b>}
-      </p>
+      <p className="muted" style={{ marginTop: -10 }}>Contacts grouped by unified company. {msg && <b>{msg}</b>}</p>
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', marginBottom: 12, flexWrap: 'wrap' }}>
-        <Select label="Company" value={company} onChange={setCompany} options={companies} />
-        <Select label="Country" value={country} onChange={setCountry} options={countries} />
-        <Select label="Group (folder)" value={group} onChange={setGroup} options={groups} />
+        <div className="field" style={{ margin: 0, minWidth: 220 }}>
+          <label style={{ marginBottom: 4 }}>Group (unified)</label>
+          <select value={group} onChange={(e) => setGroup(e.target.value)}>
+            <option value={ALL}>All groups</option>
+            {groups.map(([name, count]) => <option key={name} value={name}>{name} ({count})</option>)}
+          </select>
+        </div>
         <div className="field" style={{ margin: 0, minWidth: 180 }}>
+          <label style={{ marginBottom: 4 }}>Country</label>
+          <select value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value={ALL}>All</option>
+            {countries.map(([name, count]) => <option key={name} value={name}>{name} ({count})</option>)}
+          </select>
+        </div>
+        <div className="field" style={{ margin: 0, minWidth: 170 }}>
           <label style={{ marginBottom: 4 }}>Search</label>
           <input placeholder="name, email, job…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        {(company || country || group || q) ? <button className="btn secondary" onClick={clear} style={{ height: 40 }}>Clear</button> : null}
+        <label className="checkbox" style={{ marginBottom: 10 }}>
+          <input type="checkbox" checked={onlyNoPass} onChange={(e) => setOnlyNoPass(e.target.checked)} /> Only without pass
+        </label>
       </div>
 
       {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
-      {people && people.length === 0 && !error && (
-        <div className="empty">No contacts yet. Click <b>Sync from QR</b> to extract them.</div>
+      {raw && people.length === 0 && !error && (
+        <div className="empty">No contacts yet. Click <b>Sync from QR</b>.</div>
       )}
 
-      {people && people.length > 0 && (
+      {people.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
           <span className="muted">Showing <b>{list.length}</b> · {withPass} with pass · <b>{selected.size}</b> selected</span>
           <button className="btn" disabled={busy || selected.size === 0} onClick={createPasses}>
@@ -140,7 +180,7 @@ export default function People() {
           <thead>
             <tr>
               <th style={{ width: 30 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
-              <th>Name</th><th>Company</th><th>Job</th><th>Email</th><th>Country</th><th>Group</th><th>Pass</th>
+              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th>
             </tr>
           </thead>
           <tbody>
@@ -148,11 +188,10 @@ export default function People() {
               <tr key={p.qr_id}>
                 <td><input type="checkbox" checked={selected.has(String(p.qr_id))} onChange={() => toggle(String(p.qr_id))} /></td>
                 <td>{p.full_name || '—'}</td>
-                <td>{p.company || '—'}</td>
+                <td>{p._group}</td>
                 <td className="muted">{p.job || '—'}</td>
                 <td className="muted">{p.email || '—'}</td>
                 <td className="muted">{p.country || '—'}</td>
-                <td className="muted">{p.folder_name || p.folder_id || '—'}</td>
                 <td>{p.pass_url ? <a href={p.pass_url} target="_blank" rel="noreferrer">✓ pass</a> : <span className="muted">—</span>}</td>
               </tr>
             ))}
