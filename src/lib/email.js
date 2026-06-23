@@ -70,9 +70,11 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   const benefit = (icon, title, text) => `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
       <td width="52" valign="top">
-        <div style="width:42px;height:42px;border-radius:11px;background:#eaf1f8;text-align:center;line-height:42px">
-          <img src="${base}/icons/${icon}.png" width="22" height="22" alt="" style="vertical-align:middle"/>
-        </div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="42" style="width:42px;background:#eaf1f8;border-radius:11px">
+          <tr><td align="center" valign="middle" height="42" style="width:42px;height:42px;text-align:center">
+            <img src="${base}/icons/${icon}.png" width="22" height="22" alt="" style="display:inline-block;border:0"/>
+          </td></tr>
+        </table>
       </td>
       <td valign="top" style="padding-left:8px">
         <div style="font-size:15px;font-weight:700;color:#16263d">${title}</div>
