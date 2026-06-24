@@ -14,6 +14,9 @@ export default function Passes() {
   const [selected, setSelected] = useState(() => new Set())
   const [example, setExample] = useState(null)
   const [creating, setCreating] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [account, setAccount] = useState(null)
+  const [accountErr, setAccountErr] = useState('')
 
   const load = () => api.listPeople().then(setRaw).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
@@ -80,13 +83,26 @@ export default function Passes() {
     }
   }
 
+  function toggleAllAccount() {
+    const next = !showAll
+    setShowAll(next)
+    if (next && account === null) {
+      api.listPasses().then(setAccount).catch((e) => setAccountErr(String(e.message || e)))
+    }
+  }
+
   return (
     <>
       <div className="page-head">
         <h1>Wallet passes ({passes.length})</h1>
-        <button className="btn secondary" onClick={makeExample} disabled={creating}>
-          {creating ? 'Creating…' : 'Create example pass'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn secondary" onClick={toggleAllAccount}>
+            {showAll ? 'Hide account list' : 'Show all account passes'}
+          </button>
+          <button className="btn secondary" onClick={makeExample} disabled={creating}>
+            {creating ? 'Creating…' : 'Create example pass'}
+          </button>
+        </div>
       </div>
       <p className="muted" style={{ marginTop: -10 }}>
         People who already have a wallet pass. Send or re-send the intro email here. {msg && <b>{msg}</b>}
@@ -163,6 +179,37 @@ export default function Passes() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {showAll && (
+        <div style={{ marginTop: 28 }}>
+          <h2 style={{ fontSize: 16 }}>All AddToWallet account passes ({account ? account.length : '…'})</h2>
+          <p className="muted" style={{ marginTop: -8 }}>
+            Raw list of every pass in the AddToWallet account — including ones not linked to a person (tests, examples).
+          </p>
+          {accountErr && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {accountErr}</div>}
+          {!account && !accountErr && <div className="empty">Loading…</div>}
+          {account && account.length > 0 && (
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Job title</th><th>Business</th><th>Email</th><th>Phone</th><th>Status</th><th>Created</th></tr>
+              </thead>
+              <tbody>
+                {account.map((x) => (
+                  <tr key={x.id}>
+                    <td>{x.name}</td>
+                    <td className="muted">{x.title || '—'}</td>
+                    <td className="muted">{x.business || '—'}</td>
+                    <td className="muted">{x.email || '—'}</td>
+                    <td className="muted">{x.phone || '—'}</td>
+                    <td>{x.status ? <span className={`badge ${x.status === 'ACTIVE' ? 'active' : 'draft'}`}>{x.status.toLowerCase()}</span> : '—'}</td>
+                    <td className="muted">{x.createdAt ? String(x.createdAt).slice(0, 10) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </>
   )
