@@ -7,17 +7,34 @@ export function getContact(DB, qrId) {
 }
 
 export async function saveChangeRequest(DB, qrId, form) {
+  const id = `req_${nanoid(8)}`
   await DB.prepare(
-    `INSERT INTO change_requests (id, qr_id, full_name, company, job, email, phone, message)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message)
+     VALUES (?, 'change', ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
-      `req_${nanoid(8)}`, String(qrId),
+      id, String(qrId),
       form.full_name || null, form.company || null, form.job || null,
-      form.email || null, form.phone || null, form.message || null,
+      form.email || null, form.phone || null, form.country || null, form.message || null,
     )
     .run()
-  return { ok: true }
+  return { ok: true, id, kind: 'change' }
+}
+
+// Solicitud de una tarjeta NUEVA desde el formulario público (sin login).
+export async function saveNewCardRequest(DB, form) {
+  const id = `req_${nanoid(8)}`
+  await DB.prepare(
+    `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message)
+     VALUES (?, 'new', NULL, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      id,
+      form.full_name || null, form.company || null, form.job || null,
+      form.email || null, form.phone || null, form.country || null, form.message || null,
+    )
+    .run()
+  return { ok: true, id, kind: 'new' }
 }
 
 export async function listChangeRequests(DB) {
@@ -91,10 +108,35 @@ export function reviewPageHtml(c) {
   </div>`)
 }
 
-export function thankYouHtml() {
+// Formulario público (sin login) para solicitar una tarjeta nueva.
+export function requestCardPageHtml(form = {}, errorMsg = '') {
+  const field = (label, name, type = 'text', required = false) =>
+    `<label>${label}${required ? ' *' : ''}</label><input type="${type}" name="${name}" value="${esc(form[name])}"${required ? ' required' : ''}/>`
+  return shell('Request your BioMar Digital Business Card', `
+  <div class="body">
+    <h1>Request your digital business card</h1>
+    <p class="muted">Fill in your details and the BioMar team will create your digital business card (Wallet pass + QR / vCard) and email it to you.</p>
+    ${errorMsg ? `<p style="color:#c0392b">${esc(errorMsg)}</p>` : ''}
+    <form method="POST">
+      ${field('Full name', 'full_name', 'text', true)}
+      ${field('Company / unit', 'company')}
+      ${field('Job title', 'job')}
+      ${field('Work email', 'email', 'email', true)}
+      ${field('Phone', 'phone', 'tel')}
+      ${field('Country', 'country')}
+      <label>Anything else? (optional)</label><textarea name="message" rows="3" placeholder="e.g. preferred name spelling, urgency…"></textarea>
+      <div style="margin-top:14px"><button class="btn" type="submit">Request my card</button></div>
+    </form>
+  </div>`)
+}
+
+export function thankYouHtml(kind = 'change') {
+  const msg = kind === 'new'
+    ? 'We received your request. The BioMar team will create your digital business card and email it to you shortly.'
+    : 'We received your change request. The BioMar team will review and update your digital card.'
   return shell('Thank you', `<div class="body">
     <h1>Thanks! ✅</h1>
-    <p class="muted">We received your change request. The BioMar team will review and update your digital card.</p>
+    <p class="muted">${msg}</p>
   </div>`)
 }
 

@@ -5,7 +5,7 @@ import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
 import * as contacts from './lib/contacts.js'
 import { ensureSchema } from './lib/db.js'
-import { introEmailHtml } from './lib/email.js'
+import { introEmailHtml, sendAdminNotification } from './lib/email.js'
 import * as review from './lib/review.js'
 import * as wallet from './lib/providers/addToWallet.js'
 import * as qr from './lib/providers/qrCode.js'
@@ -176,20 +176,41 @@ export default {
         { headers: { 'content-type': 'text/html; charset=utf-8' } },
       )
     }
+    const html = (h, status = 200) => new Response(h, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
+
+    // Formulario público (sin login) para SOLICITAR una tarjeta nueva.
+    if (url.pathname === '/request') {
+      await ensureSchema(env.DB)
+      if (request.method === 'POST') {
+        const form = Object.fromEntries([...(await request.formData()).entries()])
+        if (!form.full_name || !form.email) {
+          return html(review.requestCardPageHtml(form, 'Name and email are required.'), 400)
+        }
+        await review.saveNewCardRequest(env.DB, form)
+        try {
+          await sendAdminNotification(getConfig(env), { kind: 'new', data: form })
+        } catch (e) { console.error('notify failed', e) }
+        return html(review.thankYouHtml('new'))
+      }
+      return html(review.requestCardPageHtml())
+    }
+
     // Página pública de revisión / solicitud de cambios.
     if (url.pathname.startsWith('/review/')) {
       const id = decodeURIComponent(url.pathname.split('/')[2] || '')
       await ensureSchema(env.DB)
-      const html = (h, status = 200) => new Response(h, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
       if (id === 'EXAMPLE') {
         return html(review.reviewPageHtml({ full_name: 'Alex Johansen', company: 'BioMar Group', job: 'BioMar Employee', email: 'alex.johansen@biomar.com', mobile: '+45 25 50 50 10', country: 'Denmark', pass_url: 'https://app.addtowallet.co/card/6a3ba4ca4383656b97f5fd48', short_url: 'https://qrco.de/bgp5bV' }))
       }
       const contact = await review.getContact(env.DB, id)
       if (!contact) return html(review.notFoundHtml(), 404)
       if (request.method === 'POST') {
-        const form = await request.formData()
-        await review.saveChangeRequest(env.DB, id, Object.fromEntries([...form.entries()]))
-        return html(review.thankYouHtml())
+        const form = Object.fromEntries([...(await request.formData()).entries()])
+        await review.saveChangeRequest(env.DB, id, form)
+        try {
+          await sendAdminNotification(getConfig(env), { kind: 'change', data: { ...form, country: contact.country } })
+        } catch (e) { console.error('notify failed', e) }
+        return html(review.thankYouHtml('change'))
       }
       return html(review.reviewPageHtml(contact))
     }

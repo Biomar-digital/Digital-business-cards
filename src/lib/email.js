@@ -162,6 +162,45 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   `)
 }
 
+/**
+ * Avisa al admin (notifyTo) cuando entra una solicitud pública: nueva tarjeta
+ * o cambio. No rompe el flujo público si el email falla (se captura fuera).
+ */
+export async function sendAdminNotification(cfg, { kind, data }) {
+  if (!cfg.email.brevoApiKey || !cfg.email.notifyTo) return { skipped: true }
+  const isNew = kind === 'new'
+  const title = isNew ? 'New digital card request' : 'Change request'
+  const row = (k, v) => v ? `<tr><td style="padding:4px 10px 4px 0;color:#647890">${k}</td><td style="padding:4px 0;color:#16263d"><b>${String(v).replace(/</g, '&lt;')}</b></td></tr>` : ''
+  const html = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;color:#16263d">
+      <h2 style="color:#1f3e77;margin:0 0 6px">${title}</h2>
+      <p style="color:#647890;margin:0 0 14px">A new request was submitted from the public form.</p>
+      <table style="font-size:14px;border-collapse:collapse">
+        ${row('Name', data.full_name)}
+        ${row('Company', data.company)}
+        ${row('Job title', data.job)}
+        ${row('Email', data.email)}
+        ${row('Phone', data.phone)}
+        ${row('Country', data.country)}
+        ${row('Message', data.message)}
+      </table>
+      <p style="margin:18px 0 0"><a href="${cfg.publicUrl}/requests" style="color:#1f3e77">Open the admin panel → Notifications</a></p>
+    </div>`
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': cfg.email.brevoApiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: parseSender(cfg.email.from),
+      to: [{ email: cfg.email.notifyTo }],
+      replyTo: data.email ? { email: data.email, name: data.full_name || undefined } : undefined,
+      subject: `${isNew ? '🆕' : '✏️'} ${title}: ${data.full_name || data.email || 'someone'}`,
+      htmlContent: html,
+    }),
+  })
+  if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  return { channel: 'brevo' }
+}
+
 /** Envía el email de introducción a una persona (vía Brevo). */
 export async function sendIntroEmail(cfg, { name, email, passUrl, qrId }) {
   if (!email) throw new Error('Sin email de destino')

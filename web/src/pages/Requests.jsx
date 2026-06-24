@@ -4,6 +4,7 @@ import { api } from '../api.js'
 export default function Requests() {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState('open') // open | all
 
   const load = () => api.listRequests().then(setItems).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
@@ -13,32 +14,56 @@ export default function Requests() {
     load()
   }
 
-  const open = (items || []).filter((r) => r.status !== 'done')
+  const all = items || []
+  const open = all.filter((r) => r.status !== 'done')
+  const newCards = open.filter((r) => r.kind === 'new')
+  const changes = open.filter((r) => r.kind !== 'new')
+  const shown = filter === 'open' ? open : all
+  const requestUrl = `${window.location.origin}/request`
 
   return (
     <>
-      <div className="page-head"><h1>Change requests ({open.length} open)</h1></div>
+      <div className="page-head">
+        <h1>Notifications ({open.length} open)</h1>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 160 }}>
+          <option value="open">Open only</option>
+          <option value="all">All</option>
+        </select>
+      </div>
       <p className="muted" style={{ marginTop: -10 }}>
-        Corrections submitted by people from the "Review my info" link in their email.
+        {newCards.length} new-card request{newCards.length === 1 ? '' : 's'} · {changes.length} change request{changes.length === 1 ? '' : 's'}.
       </p>
 
-      {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
-      {items && items.length === 0 && <div className="empty">No change requests yet.</div>}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <b>Public request form</b> — share this link so anyone can request a card without logging in:
+        <div style={{ marginTop: 6 }}>
+          <a href={requestUrl} target="_blank" rel="noreferrer">{requestUrl}</a>
+        </div>
+      </div>
 
-      {items && items.length > 0 && (
+      {error && <div className="card" style={{ borderColor: 'var(--red)' }}>⚠️ {error}</div>}
+      {items && shown.length === 0 && <div className="empty">No {filter === 'open' ? 'open ' : ''}requests.</div>}
+
+      {shown.length > 0 && (
         <table>
           <thead>
-            <tr><th>Date</th><th>Name</th><th>Company</th><th>Job</th><th>Email</th><th>Phone</th><th>Message</th><th>Status</th></tr>
+            <tr><th>Date</th><th>Type</th><th>Name</th><th>Company</th><th>Job</th><th>Email</th><th>Phone</th><th>Country</th><th>Message</th><th>Status</th></tr>
           </thead>
           <tbody>
-            {items.map((r) => (
+            {shown.map((r) => (
               <tr key={r.id} style={{ opacity: r.status === 'done' ? 0.5 : 1 }}>
                 <td className="muted">{String(r.created_at).slice(0, 16)}</td>
+                <td>
+                  {r.kind === 'new'
+                    ? <span className="badge active">new card</span>
+                    : <span className="badge draft">change</span>}
+                </td>
                 <td>{r.full_name || '—'}</td>
                 <td className="muted">{r.company || '—'}</td>
                 <td className="muted">{r.job || '—'}</td>
                 <td className="muted">{r.email || '—'}</td>
                 <td className="muted">{r.phone || '—'}</td>
+                <td className="muted">{r.country || '—'}</td>
                 <td className="muted" style={{ maxWidth: 220, whiteSpace: 'pre-wrap' }}>{r.message || '—'}</td>
                 <td>
                   {r.status === 'done'

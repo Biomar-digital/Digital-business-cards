@@ -76,6 +76,7 @@ function Login({ onAuthed }) {
 
 export default function App() {
   const [authed, setAuthed] = useState(null) // null = checking
+  const [openReqs, setOpenReqs] = useState(0)
 
   useEffect(() => {
     api
@@ -83,6 +84,18 @@ export default function App() {
       .then(() => setAuthed(true))
       .catch(() => setAuthed(false))
   }, [])
+
+  // Contador de notificaciones (solicitudes abiertas), con sondeo periódico.
+  useEffect(() => {
+    if (!authed) return
+    let alive = true
+    const tick = () => api.listRequests()
+      .then((rs) => { if (alive) setOpenReqs((rs || []).filter((r) => r.status !== 'done').length) })
+      .catch(() => {})
+    tick()
+    const t = setInterval(tick, 60000)
+    return () => { alive = false; clearInterval(t) }
+  }, [authed])
 
   if (authed === null) {
     return (
@@ -108,7 +121,14 @@ export default function App() {
           <NavLink to="/qr">QR codes</NavLink>
           <NavLink to="/people">People</NavLink>
           <NavLink to="/templates">Templates</NavLink>
-          <NavLink to="/requests">Requests</NavLink>
+          <NavLink to="/requests" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Notifications</span>
+            {openReqs > 0 && (
+              <span style={{ background: '#e53e3e', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 700, padding: '1px 8px', marginLeft: 8 }}>
+                {openReqs}
+              </span>
+            )}
+          </NavLink>
           <NavLink to="/groups">Groups</NavLink>
           <NavLink to="/new">New card</NavLink>
         </nav>

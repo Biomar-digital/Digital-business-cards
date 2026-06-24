@@ -31,6 +31,8 @@ export function getConfig(env) {
       provider: env.EMAIL_PROVIDER || 'brevo', // brevo | addtowallet
       brevoApiKey: env.BREVO_API_KEY || '',
       from: env.EMAIL_FROM || 'BioMar Digital Business Cards <marketing@biomar.com>',
+      // A dónde llegan las notificaciones de solicitudes (nueva tarjeta / cambios).
+      notifyTo: env.NOTIFY_EMAIL || 'marketing@biomar.com',
     },
   }
 }

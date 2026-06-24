@@ -87,6 +87,9 @@ const ALTERS = [
   'ALTER TABLE contacts ADD COLUMN pass_url TEXT',
   'ALTER TABLE contacts ADD COLUMN pass_synced_at TEXT',
   'ALTER TABLE contacts ADD COLUMN intro_email_at TEXT',
+  // Solicitudes: distinguir "cambio" (change) de "nueva tarjeta" (new) + país.
+  "ALTER TABLE change_requests ADD COLUMN kind TEXT NOT NULL DEFAULT 'change'",
+  'ALTER TABLE change_requests ADD COLUMN country TEXT',
 ]
 
 export async function ensureSchema(DB) {
