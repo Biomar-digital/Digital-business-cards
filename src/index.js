@@ -160,7 +160,8 @@ export default {
     }
     // Preview público del email de introducción (para iterar el diseño).
     if (url.pathname === '/email-preview') {
-      const name = url.searchParams.get('name') || 'Nerea Clemente'
+      // Preview coherente: el nombre y el pase de ejemplo son la MISMA persona (Alex).
+      const name = url.searchParams.get('name') || 'Alex Johansen'
       // Pase REAL de ejemplo (shareUrl /card/<id>) para que el botón del preview funcione.
       const passUrl = url.searchParams.get('passUrl') || 'https://app.addtowallet.co/card/6a3ba4ca4383656b97f5fd48'
       return new Response(
@@ -174,7 +175,7 @@ export default {
       await ensureSchema(env.DB)
       const html = (h, status = 200) => new Response(h, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
       if (id === 'EXAMPLE') {
-        return html(review.reviewPageHtml({ full_name: 'Nerea Clemente', company: 'BioMar Group', job: 'Content Creator', email: 'nerpa@biomar.com', mobile: '+45 25505010', country: 'Denmark', pass_url: 'https://app.addtowallet.co/card/EXAMPLE', short_url: 'https://qrco.de/bgp5bV' }))
+        return html(review.reviewPageHtml({ full_name: 'Alex Johansen', company: 'BioMar Group', job: 'BioMar Employee', email: 'alex.johansen@biomar.com', mobile: '+45 25 50 50 10', country: 'Denmark', pass_url: 'https://app.addtowallet.co/card/6a3ba4ca4383656b97f5fd48', short_url: 'https://qrco.de/bgp5bV' }))
       }
       const contact = await review.getContact(env.DB, id)
       if (!contact) return html(review.notFoundHtml(), 404)
