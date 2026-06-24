@@ -1,44 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
+import { isPlaceholder, unifiedGroup } from '../lib/groups.js'
 
 const ALL = ''
-
-// Normaliza un nombre (empresa o carpeta) al grupo canónico de BioMar.
-function canonicalGroup(name) {
-  if (!name) return '—'
-  const s = String(name).toLowerCase()
-  const has = (...ks) => ks.some((k) => s.includes(k))
-  if (has('aq1')) return 'AQ1 Systems'
-  if (has('sagun')) return 'BioMar Sagun (Turkey)'
-  if (has('norge', 'norway', 'karm')) return 'BioMar Norway'
-  if (has('iberia', 'spain', 'españa', 'espana')) return 'BioMar Spain'
-  if (has('ooo') || /\bru\b/.test(s) || has('russia')) return 'BioMar Russia'
-  if (has('australia')) return 'BioMar Australia'
-  if (has('chile')) return 'BioMar Chile'
-  if (has('costa rica')) return 'BioMar Costa Rica'
-  if (has('ecuador')) return 'BioMar Ecuador'
-  if (/\buk\b/.test(s) || has('united kingdom')) return 'BioMar UK'
-  if (has('france', 'emea')) return 'BioMar France'
-  if (has('r&d')) return 'BioMar R&D'
-  if (has('sourcing')) return 'BioMar Sourcing'
-  if (has('sustainab')) return 'BioMar Sustainability'
-  if (has('iberia')) return 'BioMar Spain'
-  if (has('biomar')) return 'BioMar Group'
-  return name
-}
-
-// Grupo final: la carpeta si es significativa, si no la empresa; todo normalizado.
-function unifiedGroup(p) {
-  const folder = String(p.folder_name || '').trim()
-  const base = folder && folder !== '1' && !/templates/i.test(folder) ? folder : p.company || ''
-  return canonicalGroup(base)
-}
-
-// Filas de plantilla (nombre "* *" / email "*") que no son personas reales.
-function isPlaceholder(p) {
-  const n = String(p.full_name || '').replace(/\s/g, '')
-  return !n || /^\*+$/.test(n) || p.email === '*'
-}
 
 export default function People() {
   const [raw, setRaw] = useState(null)
@@ -50,7 +14,6 @@ export default function People() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [selected, setSelected] = useState(() => new Set())
-  const [sendEmail, setSendEmail] = useState(false)
 
   const load = () => api.listPeople().then(setRaw).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
@@ -77,44 +40,23 @@ export default function People() {
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
 
-  async function sendEmails() {
-    const ids = people
-      .filter((p) => selected.has(String(p.qr_id)) && p.pass_url && p.email)
-      .map((p) => String(p.qr_id))
-    if (!ids.length) { setMsg('No selected people have a pass + email yet.'); return }
-    setBusy(true); setMsg('Sending intro emails…')
-    try {
-      let sent = 0
-      const errs = []
-      for (let i = 0; i < ids.length; i += 20) {
-        const r = await api.sendIntroEmails(ids.slice(i, i + 20))
-        sent += r.sent
-        if (r.errors?.length) errs.push(...r.errors)
-        setMsg(`Sent ${sent}/${ids.length}…`)
-      }
-      await load()
-      setMsg(`Done. ${sent} intro emails sent${errs.length ? `, ${errs.length} failed: ${errs[0].error}` : ''}.`)
-      setSelected(new Set())
-    } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
-  }
-
-  async function createPasses() {
+  async function createPasses(withEmail) {
     const ids = [...selected]
     if (!ids.length) return
-    setBusy(true); setMsg('Creating wallet passes…')
+    setBusy(true); setMsg(withEmail ? 'Creating passes + sending emails…' : 'Creating wallet passes…')
     try {
       let created = 0, emailed = 0
       for (let i = 0; i < 100; i++) {
-        const r = await api.createPasses(ids, sendEmail)
+        const r = await api.createPasses(ids, withEmail)
         created += r.created; emailed += r.emailed || 0
-        setMsg(`Created ${created} passes${sendEmail ? `, ${emailed} emails` : ''}… ${r.remaining} remaining`)
+        setMsg(`Created ${created} passes${withEmail ? `, ${emailed} emails` : ''}… ${r.remaining} remaining`)
         await load()
         if (r.remaining === 0 || r.created === 0) {
           if (r.errors?.length) setMsg(`Created ${created}. Some failed: ${r.errors[0].error}`)
           break
         }
       }
-      setMsg(`Done. ${created} passes created${sendEmail ? `, ${emailed} intro emails sent` : ''}.`)
+      setMsg(`Done. ${created} passes created${withEmail ? `, ${emailed} intro emails sent` : ''}.`)
       setSelected(new Set())
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
@@ -139,7 +81,7 @@ export default function People() {
     .filter((p) => !q || `${p.full_name} ${p.email} ${p.company} ${p.job}`.toLowerCase().includes(q.toLowerCase()))
 
   const withPass = list.filter((p) => p.pass_url).length
-  const sendableCount = people.filter((p) => selected.has(String(p.qr_id)) && p.pass_url && p.email).length
+  const noPassSel = people.filter((p) => selected.has(String(p.qr_id)) && !p.pass_url).length
   const allSel = list.length > 0 && list.every((p) => selected.has(String(p.qr_id)))
   const toggle = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const toggleAll = () => setSelected((s) => {
@@ -192,21 +134,25 @@ export default function People() {
       {people.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
           <span className="muted">Showing <b>{list.length}</b> · {withPass} with pass · <b>{selected.size}</b> selected</span>
-          <label className="checkbox" title="When creating passes, also send the intro email right away">
-            <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
-            Email on create
-          </label>
-          <button className="btn" disabled={busy || selected.size === 0} onClick={createPasses}>
-            Create wallet passes ({selected.size})
+          <button
+            className="btn"
+            disabled={busy || noPassSel === 0}
+            onClick={() => createPasses(false)}
+            title="Create the wallet pass for selected people (no email)"
+          >
+            Create pass ({noPassSel})
           </button>
           <button
-            className="btn secondary"
-            disabled={busy || sendableCount === 0}
-            onClick={sendEmails}
-            title="Send (or re-send) the intro email to selected people who already have a pass"
+            className="btn"
+            disabled={busy || noPassSel === 0}
+            onClick={() => createPasses(true)}
+            title="Create the wallet pass and send the intro email right away"
           >
-            Send intro email ({sendableCount})
+            Create pass + send email ({noPassSel})
           </button>
+          <span className="muted" style={{ fontSize: 12 }}>
+            To send emails to people who already have a pass, use the <b>Wallet passes</b> tab.
+          </span>
         </div>
       )}
 
@@ -215,7 +161,7 @@ export default function People() {
           <thead>
             <tr>
               <th style={{ width: 30 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
-              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th><th>Emailed</th>
+              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th>
             </tr>
           </thead>
           <tbody>
@@ -228,7 +174,6 @@ export default function People() {
                 <td className="muted">{p.email || '—'}</td>
                 <td className="muted">{p.country || '—'}</td>
                 <td>{p.pass_url ? <a href={p.pass_url} target="_blank" rel="noreferrer">✓ pass</a> : <span className="muted">—</span>}</td>
-                <td className="muted" title={p.intro_email_at || ''}>{p.intro_email_at ? '✉ sent' : '—'}</td>
               </tr>
             ))}
           </tbody>
