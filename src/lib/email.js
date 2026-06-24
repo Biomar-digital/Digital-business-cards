@@ -68,13 +68,11 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
     </td></tr></table>
   </div>`
 
-  const benefit = (icon, title, text) => `
+  const benefit = (title, text) => `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
       <td width="52" valign="top">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="42" bgcolor="#eaf1f8" style="width:42px;background:#eaf1f8;border-radius:11px">
-          <tr><td align="center" valign="middle" height="42" style="width:42px;height:42px;text-align:center">
-            <img src="${base}/icons/${icon}.png" width="22" height="22" alt="•" style="display:inline-block;border:0;color:${blue};font-weight:700"/>
-          </td></tr>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="40" bgcolor="${blue}" style="width:40px;background:${blue};border-radius:10px">
+          <tr><td align="center" valign="middle" height="40" style="width:40px;height:40px;text-align:center;color:#ffffff;font-size:20px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;line-height:40px">&#10003;</td></tr>
         </table>
       </td>
       <td valign="top" style="padding-left:8px">
@@ -123,11 +121,11 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
 
     <tr><td style="padding:22px 32px 4px">
       ${sectionTitle('What you get')}
-      ${benefit('wallet', 'Apple &amp; Google Wallet', 'Save it to your phone’s Wallet — no extra app, no account needed.')}
-      ${benefit('refresh', 'Always up to date', 'Job title, contact details or QR can be updated centrally — no reprinting.')}
-      ${benefit('share', 'Share in a tap', 'Show your QR and the other person saves your contact in the moment.')}
-      ${benefit('leaf', 'Sustainable', 'Zero paper and ink — supporting BioMar’s environmental commitments.')}
-      ${benefit('calendar', 'Never caught without a card', 'Going to an event? Your card is always with you, on your phone.')}
+      ${benefit('Apple &amp; Google Wallet', 'Save it to your phone’s Wallet — no extra app, no account needed.')}
+      ${benefit('Always up to date', 'Job title, contact details or QR can be updated centrally — no reprinting.')}
+      ${benefit('Share in a tap', 'Show your QR and the other person saves your contact in the moment.')}
+      ${benefit('Sustainable', 'Zero paper and ink — supporting BioMar’s environmental commitments.')}
+      ${benefit('Never caught without a card', 'Going to an event? Your card is always with you, on your phone.')}
     </td></tr>
 
     <tr><td align="center" style="padding:14px 32px 6px">
