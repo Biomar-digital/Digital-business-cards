@@ -24,17 +24,19 @@ export async function saveChangeRequest(DB, qrId, form) {
 // Solicitud de una tarjeta NUEVA desde el formulario público (sin login).
 export async function saveNewCardRequest(DB, form) {
   const id = `req_${nanoid(8)}`
+  // Si eligió "Other" en el dropdown, usamos el texto libre.
+  const company = (form.company === 'Other' || !form.company) ? (form.company_other || null) : form.company
   await DB.prepare(
     `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message)
      VALUES (?, 'new', NULL, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
-      form.full_name || null, form.company || null, form.job || null,
+      form.full_name || null, company, form.job || null,
       form.email || null, form.phone || null, form.country || null, form.message || null,
     )
     .run()
-  return { ok: true, id, kind: 'new' }
+  return { ok: true, id, kind: 'new', company }
 }
 
 export async function listChangeRequests(DB) {
@@ -63,7 +65,7 @@ const shell = (title, body) => `<!doctype html><html lang="en"><head><meta chars
   .muted{color:var(--muted)} .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;gap:12px}
   .row b{color:var(--muted);font-weight:600} a.btn,button.btn{display:inline-block;background:var(--blue);color:#fff;border:none;text-decoration:none;font-size:15px;font-weight:700;padding:12px 22px;border-radius:10px;cursor:pointer}
   a.link{color:var(--blue)} label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
-  input,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit}
+  input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
   .foot{background:#f5f9fd;border-top:1px solid var(--line);padding:16px 26px;color:var(--muted);font-size:12px}
 </style></head><body><div class="wrap"><div class="card">
   <div class="head"><img class="logo" src="/biomar-logo.png" alt="BioMar"/></div>
@@ -109,9 +111,15 @@ export function reviewPageHtml(c) {
 }
 
 // Formulario público (sin login) para solicitar una tarjeta nueva.
-export function requestCardPageHtml(form = {}, errorMsg = '') {
+// `groups` es la lista de empresas/unidades (dropdown).
+export function requestCardPageHtml(form = {}, errorMsg = '', groups = []) {
   const field = (label, name, type = 'text', required = false) =>
     `<label>${label}${required ? ' *' : ''}</label><input type="${type}" name="${name}" value="${esc(form[name])}"${required ? ' required' : ''}/>`
+  const options = ['', ...groups, 'Other']
+    .map((g) => g === ''
+      ? '<option value="" disabled selected>Select your company / unit…</option>'
+      : `<option value="${esc(g)}"${form.company === g ? ' selected' : ''}>${esc(g)}</option>`)
+    .join('')
   return shell('Request your BioMar Digital Business Card', `
   <div class="body">
     <h1>Request your digital business card</h1>
@@ -119,7 +127,10 @@ export function requestCardPageHtml(form = {}, errorMsg = '') {
     ${errorMsg ? `<p style="color:#c0392b">${esc(errorMsg)}</p>` : ''}
     <form method="POST">
       ${field('Full name', 'full_name', 'text', true)}
-      ${field('Company / unit', 'company')}
+      <label>Company / unit *</label>
+      <select name="company" required>${options}</select>
+      <label>If "Other", specify</label>
+      <input type="text" name="company_other" value="${esc(form.company_other)}" placeholder="Your company / unit"/>
       ${field('Job title', 'job')}
       ${field('Work email', 'email', 'email', true)}
       ${field('Phone', 'phone', 'tel')}

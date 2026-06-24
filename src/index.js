@@ -5,6 +5,7 @@ import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
 import * as contacts from './lib/contacts.js'
 import { ensureSchema } from './lib/db.js'
+import { listUnifiedGroups } from './lib/groups.js'
 import { introEmailHtml, sendAdminNotification } from './lib/email.js'
 import * as review from './lib/review.js'
 import * as wallet from './lib/providers/addToWallet.js'
@@ -181,18 +182,19 @@ export default {
     // Formulario público (sin login) para SOLICITAR una tarjeta nueva.
     if (url.pathname === '/request') {
       await ensureSchema(env.DB)
+      const groups = await listUnifiedGroups(env.DB)
       if (request.method === 'POST') {
         const form = Object.fromEntries([...(await request.formData()).entries()])
         if (!form.full_name || !form.email) {
-          return html(review.requestCardPageHtml(form, 'Name and email are required.'), 400)
+          return html(review.requestCardPageHtml(form, 'Name and email are required.', groups), 400)
         }
-        await review.saveNewCardRequest(env.DB, form)
+        const saved = await review.saveNewCardRequest(env.DB, form)
         try {
-          await sendAdminNotification(getConfig(env), { kind: 'new', data: form })
+          await sendAdminNotification(getConfig(env), { kind: 'new', data: { ...form, company: saved.company } })
         } catch (e) { console.error('notify failed', e) }
         return html(review.thankYouHtml('new'))
       }
-      return html(review.requestCardPageHtml())
+      return html(review.requestCardPageHtml({}, '', groups))
     }
 
     // Página pública de revisión / solicitud de cambios.
