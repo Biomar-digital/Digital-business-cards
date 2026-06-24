@@ -105,12 +105,30 @@ export async function listPasses(cfg) {
   }
 
   const all = []
-  for (let page = 1; page <= 50; page++) {
+  const seen = new Set()
+  let pageSize = 0
+  for (let page = 1; page <= 100; page++) {
     const data = await apiFetch(cfg, `${cfg.addToWallet.listPath}?page=${page}`)
     const list = asList(data) || []
-    all.push(...list)
-    const totalPages = paginationOf(data)?.totalPages ?? 1
-    if (list.length === 0 || page >= totalPages) break
+    if (list.length === 0) break
+    if (page === 1) pageSize = list.length
+
+    let fresh = 0
+    for (const x of list) {
+      const id = x._id ?? x.id
+      const key = id ? String(id) : JSON.stringify(x).slice(0, 120)
+      if (seen.has(key)) continue
+      seen.add(key); all.push(x); fresh++
+    }
+
+    // Condiciones de fin, tolerando distintos nombres de campos de paginación.
+    const pg = paginationOf(data) || {}
+    const totalPages = pg.totalPages ?? pg.total_pages ?? pg.pages ?? null
+    const total = pg.total ?? pg.totalCount ?? pg.count ?? null
+    if (fresh === 0) break // la API ignora ?page= o no hay datos nuevos
+    if (totalPages && page >= totalPages) break
+    if (total && all.length >= total) break
+    if (pageSize && list.length < pageSize) break // página corta = última
   }
   // Ocultamos las definiciones de plantilla (filas con placeholders como
   // "{name}"/"{email}") para mostrar solo los pases reales de personas.
