@@ -161,7 +161,8 @@ export default {
     // Preview público del email de introducción (para iterar el diseño).
     if (url.pathname === '/email-preview') {
       const name = url.searchParams.get('name') || 'Nerea Clemente'
-      const passUrl = url.searchParams.get('passUrl') || 'https://app.addtowallet.co/card/EXAMPLE'
+      // Pase REAL de ejemplo para que el botón del preview funcione al clickear.
+      const passUrl = url.searchParams.get('passUrl') || 'https://app.addtowallet.co/passGenerator/6a0edd8fbd302f5983d094e4'
       return new Response(
         introEmailHtml({ name, passUrl, reviewUrl: `${url.origin}/review/EXAMPLE`, base: url.origin }),
         { headers: { 'content-type': 'text/html; charset=utf-8' } },

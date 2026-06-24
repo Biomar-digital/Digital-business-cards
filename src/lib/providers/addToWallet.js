@@ -381,7 +381,7 @@ export async function createExamplePass(cfg) {
     status: res.status,
     ok: res.ok,
     cardId: id,
-    passUrl: json?.shareUrl ?? json?.url ?? (id ? `https://app.addtowallet.co/card/${id}` : null),
+    passUrl: json?.shareUrl ?? json?.url ?? (id ? `https://app.addtowallet.co/passGenerator/${id}` : null),
     passGeneratorUrl: id ? `https://app.addtowallet.co/passGenerator/${id}` : null,
     usedDesign: design,
     response: json ?? text.slice(0, 600),
@@ -454,5 +454,5 @@ export async function createPassForContact(cfg, contact, design = {}) {
   }
   const data = await apiFetch(cfg, '/card/create', { method: 'POST', body: payload })
   const id = data.cardId ?? data.id ?? data._id ?? null
-  return { passId: id, passUrl: data.shareUrl ?? data.url ?? (id ? `https://app.addtowallet.co/card/${id}` : null) }
+  return { passId: id, passUrl: data.shareUrl ?? data.url ?? (id ? `https://app.addtowallet.co/passGenerator/${id}` : null) }
 }
