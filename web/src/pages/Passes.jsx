@@ -61,11 +61,11 @@ export default function Passes() {
             <>
               <b>Example pass created with the real template</b> — open it and take a screenshot:
               <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-                {example.passGeneratorUrl && (
-                  <a href={example.passGeneratorUrl} target="_blank" rel="noreferrer">Open pass preview ↗</a>
-                )}
                 {example.passUrl && (
-                  <a href={example.passUrl} target="_blank" rel="noreferrer">Add-to-Wallet link ↗</a>
+                  <a href={example.passUrl} target="_blank" rel="noreferrer"><b>Open pass (public link) ↗</b></a>
+                )}
+                {example.passGeneratorUrl && (
+                  <a href={example.passGeneratorUrl} target="_blank" rel="noreferrer" className="muted">Editor (dashboard) ↗</a>
                 )}
                 {example.cardId && <span className="muted">id: {example.cardId}</span>}
               </div>
