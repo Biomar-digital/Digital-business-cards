@@ -1,4 +1,4 @@
-import { createPassForContact, getTemplateDesign } from './providers/addToWallet.js'
+import { createPassForContact, getTemplateDesign, listPasses } from './providers/addToWallet.js'
 import { sendIntroEmail } from './email.js'
 import { getVcardLanding, listQrCodes } from './providers/qrCode.js'
 
@@ -88,6 +88,60 @@ export async function syncBatch(cfg, DB, { limit = 40 } = {}) {
 export async function resetSync(DB) {
   await DB.prepare('UPDATE contacts SET synced_at=NULL').run()
   return { ok: true }
+}
+
+// Normaliza una URL/short_url a su "código" final (qrco.de/<code> -> code).
+function shortKey(u) {
+  if (!u) return null
+  const s = String(u).trim().toLowerCase().replace(/\/+$/, '')
+  const seg = s.split('/').pop()
+  return seg || null
+}
+
+/**
+ * Vincula pases que YA existen en AddToWallet (creados fuera de este panel) con
+ * las personas del directorio, rellenando pass_id/pass_url. Así aparecen en la
+ * gestión, se les puede enviar el email y NO se les crea un pase duplicado.
+ * Matchea por: código del QR (barcode = short_url), luego email, luego nombre.
+ */
+export async function linkExistingPasses(cfg, DB) {
+  const passes = await listPasses(cfg)
+  const { results: contacts } = await DB.prepare(
+    'SELECT qr_id, short_url, short_code, email, full_name, pass_id FROM contacts',
+  ).all()
+
+  const byShort = new Map()
+  const byEmail = new Map()
+  const byName = new Map()
+  for (const c of contacts) {
+    const sk = c.short_code ? String(c.short_code).toLowerCase() : shortKey(c.short_url)
+    if (sk) byShort.set(sk, c)
+    if (c.email) byEmail.set(String(c.email).trim().toLowerCase(), c)
+    if (c.full_name) byName.set(String(c.full_name).trim().toLowerCase(), c)
+  }
+
+  let linked = 0
+  let already = 0
+  const unmatched = []
+  for (const p of passes) {
+    if (!p.id) continue
+    const x = p.raw || {}
+    const barcode = x.barcodeValue ?? x.barcode?.value ?? x.barcode ?? x.qrValue ?? null
+
+    let c = null
+    if (barcode) c = byShort.get(shortKey(barcode))
+    if (!c && p.email) c = byEmail.get(String(p.email).trim().toLowerCase())
+    if (!c && p.name) c = byName.get(String(p.name).trim().toLowerCase())
+    if (!c) { unmatched.push(p.name || p.email || p.id); continue }
+    if (c.pass_id) { already++; continue }
+
+    const passUrl = `https://app.addtowallet.co/card/${p.id}`
+    await DB.prepare("UPDATE contacts SET pass_id=?, pass_url=?, pass_synced_at=datetime('now') WHERE qr_id=?")
+      .bind(p.id, passUrl, String(c.qr_id))
+      .run()
+    linked++
+  }
+  return { passes: passes.length, linked, already, unmatched: unmatched.slice(0, 25) }
 }
 
 /**

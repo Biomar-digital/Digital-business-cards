@@ -91,11 +91,23 @@ export default function Passes() {
     }
   }
 
+  async function linkPasses() {
+    setBusy(true); setMsg('Linking existing AddToWallet passes to people…')
+    try {
+      const r = await api.linkPasses()
+      await load()
+      setMsg(`Linked ${r.linked} existing pass(es). ${r.already} already linked, ${r.unmatched?.length || 0} unmatched of ${r.passes} account passes.`)
+    } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
+  }
+
   return (
     <>
       <div className="page-head">
         <h1>Wallet passes ({passes.length})</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn secondary" onClick={linkPasses} disabled={busy} title="Match passes already in AddToWallet to people in the directory (no duplicates)">
+            Link existing passes
+          </button>
           <button className="btn secondary" onClick={toggleAllAccount}>
             {showAll ? 'Hide account list' : 'Show all account passes'}
           </button>

@@ -52,6 +52,7 @@ export const api = {
   resetPeople: () => request('/people/reset', { method: 'POST' }),
   createPasses: (qrIds, sendEmail) => request('/people/passes', { method: 'POST', body: { qrIds, sendEmail } }),
   sendIntroEmails: (qrIds) => request('/people/send-email', { method: 'POST', body: { qrIds } }),
+  linkPasses: () => request('/people/link-passes', { method: 'POST' }),
 
   createTestCard: () => request('/test/create-card', { method: 'POST' }),
   createExamplePass: () => request('/test/create-pass', { method: 'POST' }),
