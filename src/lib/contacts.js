@@ -91,6 +91,40 @@ export async function resetSync(DB) {
 }
 
 /**
+ * Envía el email de introducción a las personas indicadas (qrIds) que ya tienen
+ * pase (pass_url) y email. Sirve para enviar/reenviar por individuo o por grupo.
+ * El front trocea la selección, así que aquí procesamos lo que llegue (un email
+ * = un subrequest a Brevo). Marca intro_email_at en cada envío correcto.
+ */
+export async function sendIntroEmails(cfg, DB, qrIds) {
+  if (!Array.isArray(qrIds) || qrIds.length === 0) return { sent: 0, skipped: 0, errors: [] }
+  const ids = qrIds.map(String).slice(0, 40)
+  const ph = ids.map(() => '?').join(',')
+  const { results: rows } = await DB.prepare(
+    `SELECT qr_id, full_name, email, pass_url FROM contacts WHERE qr_id IN (${ph})`,
+  )
+    .bind(...ids)
+    .all()
+
+  let sent = 0
+  let skipped = 0
+  const errors = []
+  for (const c of rows) {
+    if (!c.email || !c.pass_url) { skipped++; continue }
+    try {
+      await sendIntroEmail(cfg, { name: c.full_name, email: c.email, passUrl: c.pass_url, qrId: c.qr_id })
+      await DB.prepare("UPDATE contacts SET intro_email_at=datetime('now') WHERE qr_id=?")
+        .bind(String(c.qr_id))
+        .run()
+      sent++
+    } catch (e) {
+      errors.push({ name: c.full_name, error: String(e.message ?? e).slice(0, 160) })
+    }
+  }
+  return { sent, skipped, errors: errors.slice(0, 5) }
+}
+
+/**
  * Crea wallet passes en lote para las personas indicadas (qrIds) que aún no
  * tienen pase. Cada pase lleva el barcode apuntando al vCard QR de la persona.
  * Procesa hasta `limit` por llamada (tope de subrequests del Worker).

@@ -128,6 +128,11 @@ api.post('/people/passes', async (c) => {
     }),
   )
 })
+// Envía/reenvía el email de intro a las personas indicadas (con pase + email).
+api.post('/people/send-email', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return c.json(await contacts.sendIntroEmails(getConfig(c.env), c.env.DB, body.qrIds || []))
+})
 
 // ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──
 api.post('/test/create-card', async (c) => {

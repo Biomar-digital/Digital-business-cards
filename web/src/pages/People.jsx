@@ -77,6 +77,27 @@ export default function People() {
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
 
+  async function sendEmails() {
+    const ids = people
+      .filter((p) => selected.has(String(p.qr_id)) && p.pass_url && p.email)
+      .map((p) => String(p.qr_id))
+    if (!ids.length) { setMsg('No selected people have a pass + email yet.'); return }
+    setBusy(true); setMsg('Sending intro emails…')
+    try {
+      let sent = 0
+      const errs = []
+      for (let i = 0; i < ids.length; i += 20) {
+        const r = await api.sendIntroEmails(ids.slice(i, i + 20))
+        sent += r.sent
+        if (r.errors?.length) errs.push(...r.errors)
+        setMsg(`Sent ${sent}/${ids.length}…`)
+      }
+      await load()
+      setMsg(`Done. ${sent} intro emails sent${errs.length ? `, ${errs.length} failed: ${errs[0].error}` : ''}.`)
+      setSelected(new Set())
+    } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
+  }
+
   async function createPasses() {
     const ids = [...selected]
     if (!ids.length) return
@@ -118,6 +139,7 @@ export default function People() {
     .filter((p) => !q || `${p.full_name} ${p.email} ${p.company} ${p.job}`.toLowerCase().includes(q.toLowerCase()))
 
   const withPass = list.filter((p) => p.pass_url).length
+  const sendableCount = people.filter((p) => selected.has(String(p.qr_id)) && p.pass_url && p.email).length
   const allSel = list.length > 0 && list.every((p) => selected.has(String(p.qr_id)))
   const toggle = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const toggleAll = () => setSelected((s) => {
@@ -170,12 +192,20 @@ export default function People() {
       {people.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
           <span className="muted">Showing <b>{list.length}</b> · {withPass} with pass · <b>{selected.size}</b> selected</span>
-          <label className="checkbox">
+          <label className="checkbox" title="When creating passes, also send the intro email right away">
             <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
-            Send intro email
+            Email on create
           </label>
           <button className="btn" disabled={busy || selected.size === 0} onClick={createPasses}>
             Create wallet passes ({selected.size})
+          </button>
+          <button
+            className="btn secondary"
+            disabled={busy || sendableCount === 0}
+            onClick={sendEmails}
+            title="Send (or re-send) the intro email to selected people who already have a pass"
+          >
+            Send intro email ({sendableCount})
           </button>
         </div>
       )}
@@ -185,7 +215,7 @@ export default function People() {
           <thead>
             <tr>
               <th style={{ width: 30 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
-              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th>
+              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th><th>Emailed</th>
             </tr>
           </thead>
           <tbody>
@@ -198,6 +228,7 @@ export default function People() {
                 <td className="muted">{p.email || '—'}</td>
                 <td className="muted">{p.country || '—'}</td>
                 <td>{p.pass_url ? <a href={p.pass_url} target="_blank" rel="noreferrer">✓ pass</a> : <span className="muted">—</span>}</td>
+                <td className="muted" title={p.intro_email_at || ''}>{p.intro_email_at ? '✉ sent' : '—'}</td>
               </tr>
             ))}
           </tbody>

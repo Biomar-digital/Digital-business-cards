@@ -86,6 +86,7 @@ const ALTERS = [
   'ALTER TABLE contacts ADD COLUMN pass_id TEXT',
   'ALTER TABLE contacts ADD COLUMN pass_url TEXT',
   'ALTER TABLE contacts ADD COLUMN pass_synced_at TEXT',
+  'ALTER TABLE contacts ADD COLUMN intro_email_at TEXT',
 ]
 
 export async function ensureSchema(DB) {
