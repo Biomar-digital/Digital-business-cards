@@ -55,6 +55,7 @@ export async function sendCardEmail(cfg, card) {
 // cambios, y el botón para agregarla al Wallet.
 export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   const blue = '#1f3e77'
+  const headerBg = '#1c4077' // navy exacto del logo, para que el recuadro se funda
   const light = '#82c0e8'
   const ink = '#2d3748'
   const logoUrl = `${base}/biomar-logo.png`
@@ -85,7 +86,7 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   const sectionTitle = (t) => `<div style="font-size:13px;font-weight:700;color:${blue};text-transform:uppercase;letter-spacing:.6px;margin:6px 0 12px">${t}</div>`
 
   return wrap(`
-    <tr><td style="background:${blue};padding:22px 32px">
+    <tr><td style="background:${headerBg};padding:22px 32px">
       <table role="presentation" cellpadding="0" cellspacing="0"><tr>
         <td valign="middle">
           ${logoUrl
