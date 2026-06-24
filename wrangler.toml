@@ -23,7 +23,7 @@ QRCODE_BASE_URL = "https://api.qr-code-generator.com/v1"
 QRCODE_SHORT_DOMAIN = "qrco.de"
 QRCODE_TEMPLATE_ID = "84848399"
 EMAIL_PROVIDER = "brevo"          # brevo | addtowallet
-EMAIL_FROM = "Biomar Digital <no-reply@biomar.digital>"
+EMAIL_FROM = "BioMar Digital Business Cards <marketing@biomar.com>"
 
 # ── Base de datos D1 ──
 # El Worker crea las tablas solo en el primer arranque (ver src/lib/db.js),

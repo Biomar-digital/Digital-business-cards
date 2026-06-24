@@ -30,7 +30,7 @@ export function getConfig(env) {
     email: {
       provider: env.EMAIL_PROVIDER || 'brevo', // brevo | addtowallet
       brevoApiKey: env.BREVO_API_KEY || '',
-      from: env.EMAIL_FROM || 'Biomar Digital <no-reply@biomar.digital>',
+      from: env.EMAIL_FROM || 'BioMar Digital Business Cards <marketing@biomar.com>',
     },
   }
 }
