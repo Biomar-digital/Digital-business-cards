@@ -93,8 +93,8 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
             ? `<img src="${logoUrl}" alt="BioMar" height="48" style="height:48px;display:block"/>`
             : `<span style="color:#fff;font-size:26px;font-weight:800">Bio<span style="color:${light}">Mar</span></span>`}
         </td>
-        <td valign="middle" style="padding-left:16px;border-left:1px solid rgba(255,255,255,.25)">
-          <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px;padding-left:16px">Digital Business Card</div>
+        <td valign="middle">
+          <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px;padding-left:18px">Digital Business Card</div>
         </td>
       </tr></table>
     </td></tr>
