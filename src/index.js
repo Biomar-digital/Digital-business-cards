@@ -179,16 +179,23 @@ export default {
     }
     const html = (h, status = 200) => new Response(h, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
 
+    const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('x-forwarded-for') || null
+
     // Formulario público (sin login) para SOLICITAR una tarjeta nueva.
     if (url.pathname === '/request') {
       await ensureSchema(env.DB)
       const groups = await listUnifiedGroups(env.DB)
       if (request.method === 'POST') {
         const form = Object.fromEntries([...(await request.formData()).entries()])
-        if (!form.full_name || !form.email) {
-          return html(review.requestCardPageHtml(form, 'Name and email are required.', groups), 400)
+        // Anti-spam: honeypot → fingimos éxito y descartamos en silencio.
+        if (review.isHoneypotFilled(form)) return html(review.thankYouHtml('new'))
+        if (!form.full_name || !review.validEmail(form.email)) {
+          return html(review.requestCardPageHtml(form, 'A valid name and email are required.', groups), 400)
         }
-        const saved = await review.saveNewCardRequest(env.DB, form)
+        if (await review.tooManyRequests(env.DB, clientIp)) {
+          return html(review.requestCardPageHtml(form, 'Too many requests. Please try again in a few minutes.', groups), 429)
+        }
+        const saved = await review.saveNewCardRequest(env.DB, form, clientIp)
         try {
           await sendAdminNotification(getConfig(env), { kind: 'new', data: { ...form, company: saved.company } })
         } catch (e) { console.error('notify failed', e) }
@@ -208,7 +215,12 @@ export default {
       if (!contact) return html(review.notFoundHtml(), 404)
       if (request.method === 'POST') {
         const form = Object.fromEntries([...(await request.formData()).entries()])
-        await review.saveChangeRequest(env.DB, id, form)
+        // Anti-spam: honeypot → fingimos éxito; rate-limit por IP.
+        if (review.isHoneypotFilled(form)) return html(review.thankYouHtml('change'))
+        if (await review.tooManyRequests(env.DB, clientIp)) {
+          return html(review.thankYouHtml('change'))
+        }
+        await review.saveChangeRequest(env.DB, id, form, clientIp)
         try {
           await sendAdminNotification(getConfig(env), { kind: 'change', data: { ...form, country: contact.country } })
         } catch (e) { console.error('notify failed', e) }

@@ -90,6 +90,7 @@ const ALTERS = [
   // Solicitudes: distinguir "cambio" (change) de "nueva tarjeta" (new) + país.
   "ALTER TABLE change_requests ADD COLUMN kind TEXT NOT NULL DEFAULT 'change'",
   'ALTER TABLE change_requests ADD COLUMN country TEXT',
+  'ALTER TABLE change_requests ADD COLUMN ip TEXT',
 ]
 
 export async function ensureSchema(DB) {

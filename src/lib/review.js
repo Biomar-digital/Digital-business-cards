@@ -6,37 +6,59 @@ export function getContact(DB, qrId) {
   return DB.prepare('SELECT * FROM contacts WHERE qr_id = ?').bind(String(qrId)).first()
 }
 
-export async function saveChangeRequest(DB, qrId, form) {
+// ── Anti-spam (formularios públicos) ──
+export const HONEYPOT = 'company_website' // campo oculto: si viene relleno, es bot
+
+const cap = (s, n) => { const v = String(s ?? '').trim(); return v ? v.slice(0, n) : null }
+export const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || ''))
+
+/** ¿El envío disparó el honeypot? (humanos no rellenan el campo oculto). */
+export function isHoneypotFilled(form) {
+  return Boolean(form[HONEYPOT] && String(form[HONEYPOT]).trim())
+}
+
+/** Límite de envíos por IP en una ventana (anti-flood). */
+export async function tooManyRequests(DB, ip, { max = 5, minutes = 10 } = {}) {
+  if (!ip) return false
+  const { results } = await DB.prepare(
+    "SELECT COUNT(*) AS n FROM change_requests WHERE ip = ? AND created_at >= datetime('now', ?)",
+  ).bind(String(ip), `-${minutes} minutes`).all()
+  return (results[0]?.n ?? 0) >= max
+}
+
+export async function saveChangeRequest(DB, qrId, form, ip = null) {
   const id = `req_${nanoid(8)}`
   await DB.prepare(
-    `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message)
-     VALUES (?, 'change', ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message, ip)
+     VALUES (?, 'change', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id, String(qrId),
-      form.full_name || null, form.company || null, form.job || null,
-      form.email || null, form.phone || null, form.country || null, form.message || null,
+      cap(form.full_name, 120), cap(form.company, 120), cap(form.job, 120),
+      cap(form.email, 160), cap(form.phone, 40), cap(form.country, 80), cap(form.message, 2000),
+      ip,
     )
     .run()
   return { ok: true, id, kind: 'change' }
 }
 
 // Solicitud de una tarjeta NUEVA desde el formulario público (sin login).
-export async function saveNewCardRequest(DB, form) {
+export async function saveNewCardRequest(DB, form, ip = null) {
   const id = `req_${nanoid(8)}`
   // Si eligió "Other" en el dropdown, usamos el texto libre.
-  const company = (form.company === 'Other' || !form.company) ? (form.company_other || null) : form.company
+  const rawCompany = (form.company === 'Other' || !form.company) ? form.company_other : form.company
   await DB.prepare(
-    `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message)
-     VALUES (?, 'new', NULL, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO change_requests (id, kind, qr_id, full_name, company, job, email, phone, country, message, ip)
+     VALUES (?, 'new', NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
-      form.full_name || null, company, form.job || null,
-      form.email || null, form.phone || null, form.country || null, form.message || null,
+      cap(form.full_name, 120), cap(rawCompany, 120), cap(form.job, 120),
+      cap(form.email, 160), cap(form.phone, 40), cap(form.country, 80), cap(form.message, 2000),
+      ip,
     )
     .run()
-  return { ok: true, id, kind: 'new', company }
+  return { ok: true, id, kind: 'new', company: cap(rawCompany, 120) }
 }
 
 export async function listChangeRequests(DB) {
@@ -99,6 +121,9 @@ export function reviewPageHtml(c) {
     <h2>Request a change</h2>
     <p class="muted">Edit anything that's incorrect and send it to us.</p>
     <form method="POST">
+      <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+        <label>Leave this field empty</label><input type="text" name="${HONEYPOT}" tabindex="-1" autocomplete="off"/>
+      </div>
       ${field('Name', 'full_name', c.full_name)}
       ${field('Company', 'company', c.company)}
       ${field('Job title', 'job', c.job)}
@@ -126,6 +151,9 @@ export function requestCardPageHtml(form = {}, errorMsg = '', groups = []) {
     <p class="muted">Fill in your details and the BioMar team will create your digital business card (Wallet pass + QR / vCard) and email it to you.</p>
     ${errorMsg ? `<p style="color:#c0392b">${esc(errorMsg)}</p>` : ''}
     <form method="POST">
+      <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+        <label>Leave this field empty</label><input type="text" name="${HONEYPOT}" tabindex="-1" autocomplete="off"/>
+      </div>
       ${field('Full name', 'full_name', 'text', true)}
       <label>Company / unit *</label>
       <select name="company" required>${options}</select>
