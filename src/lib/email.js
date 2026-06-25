@@ -87,9 +87,7 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
     <tr><td bgcolor="${headerBg}" style="background:${headerBg};padding:22px 32px">
       <table role="presentation" cellpadding="0" cellspacing="0"><tr>
         <td valign="middle">
-          ${logoUrl
-            ? `<img src="${logoUrl}" alt="BioMar" height="48" style="height:48px;display:block"/>`
-            : `<span style="color:#fff;font-size:26px;font-weight:800">Bio<span style="color:${light}">Mar</span></span>`}
+          <span style="color:#fff;font-size:30px;font-weight:800;letter-spacing:.2px;font-family:'Segoe UI',Arial,sans-serif">Bio<span style="color:${light}">Mar</span></span>
         </td>
         <td valign="middle">
           <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px;padding-left:18px">Digital Business Card</div>
@@ -97,8 +95,8 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
       </tr></table>
     </td></tr>
 
-    <tr><td style="padding:0;font-size:0;line-height:0">
-      <img src="${base}/email-banner.jpg" alt="BioMar Digital Business Card" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"/>
+    <tr><td bgcolor="${headerBg}" style="padding:0;font-size:0;line-height:0;background:${headerBg}">
+      <img src="${base}/email-banner.jpg" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"/>
     </td></tr>
 
     <tr><td style="padding:30px 32px 6px">
