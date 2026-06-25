@@ -136,6 +136,11 @@ api.post('/people/send-email', async (c) => {
 })
 // Vincula pases ya existentes en AddToWallet con las personas del directorio.
 api.post('/people/link-passes', async (c) => c.json(await contacts.linkExistingPasses(getConfig(c.env), c.env.DB)))
+// Edita una persona y empuja la actualización a su wallet pass (si tiene).
+api.post('/people/:qrId/update', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  return c.json(await contacts.updatePerson(getConfig(c.env), c.env.DB, c.req.param('qrId'), body.fields || {}))
+})
 
 // ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──
 api.post('/test/create-card', async (c) => {

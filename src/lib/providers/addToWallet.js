@@ -474,3 +474,64 @@ export async function createPassForContact(cfg, contact, design = {}) {
   const id = data.cardId ?? data.id ?? data._id ?? null
   return { passId: id, passUrl: data.shareUrl ?? data.url ?? (id ? `https://app.addtowallet.co/card/${id}` : null) }
 }
+
+/**
+ * Actualiza un wallet pass YA existente con los datos del contacto (push al
+ * pase que la persona ya agregó). El endpoint exacto de update no está en las
+ * docs que pudimos leer, así que probamos varios candidatos y devolvemos el
+ * resultado crudo para confirmar cuál funciona.
+ */
+export async function updatePassForContact(cfg, contact, design = {}) {
+  if (!contact.pass_id) return { ok: false, error: 'El contacto no tiene pass_id' }
+  const phone = contact.mobile || contact.phone
+  const text = []
+  if (contact.email) text.push({ id: 'r1start', header: 'Email', body: contact.email })
+  if (phone) text.push({ id: 'r1end', header: 'Phone', body: phone })
+  const links = []
+  if (phone) links.push({ id: 'r1', description: 'Call', uri: `tel:${phone}` })
+  if (contact.email) links.push({ id: 'r2', description: 'Email', uri: `mailto:${contact.email}` })
+
+  const payload = {
+    cardId: contact.pass_id,
+    cardTitle: contact.company || 'BioMar',
+    header: contact.full_name || 'BioMar',
+    subheader: contact.job || undefined,
+    hexBackgroundColor: design.hexBackgroundColor || '#1f3e77',
+    appleFontColor: design.appleFontColor || '#ffffff',
+    barcodeType: 'QR_CODE',
+    barcodeValue: contact.short_url || 'https://www.biomar.com',
+    barcodeAltText: 'Scan to add contact',
+    textModulesData: text,
+    linksModuleData: links,
+  }
+  if (design.logoUrl) payload.logoUrl = design.logoUrl
+  if (design.heroImage) { payload.heroImage = design.heroImage; payload.googleHeroImage = design.heroImage; payload.appleHeroImage = design.heroImage }
+
+  const candidates = [
+    { path: '/card/update', method: 'POST' },
+    { path: `/card/update/${contact.pass_id}`, method: 'PUT' },
+    { path: `/card/update/${contact.pass_id}`, method: 'POST' },
+    { path: `/card/edit/${contact.pass_id}`, method: 'POST' },
+    { path: `/card/${contact.pass_id}`, method: 'PUT' },
+  ]
+  const attempts = []
+  for (const c of candidates) {
+    try {
+      const res = await fetch(`${cfg.addToWallet.baseUrl}${c.path}`, {
+        method: c.method,
+        headers: { 'Content-Type': 'application/json', ...authHeaders(cfg) },
+        body: JSON.stringify(payload),
+      })
+      const t = await res.text()
+      if (res.ok) {
+        let json = null
+        try { json = JSON.parse(t) } catch { /* texto */ }
+        return { ok: true, path: c.path, method: c.method, status: res.status, response: json ?? t.slice(0, 300) }
+      }
+      attempts.push({ path: c.path, method: c.method, status: res.status, body: t.slice(0, 120) })
+    } catch (e) {
+      attempts.push({ path: c.path, method: c.method, error: String(e.message ?? e).slice(0, 120) })
+    }
+  }
+  return { ok: false, attempts }
+}

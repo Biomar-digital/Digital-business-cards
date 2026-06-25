@@ -1,4 +1,4 @@
-import { createPassForContact, getTemplateDesign, listPasses } from './providers/addToWallet.js'
+import { createPassForContact, getTemplateDesign, listPasses, updatePassForContact } from './providers/addToWallet.js'
 import { sendIntroEmail } from './email.js'
 import { getVcardLanding, listQrCodes } from './providers/qrCode.js'
 
@@ -82,6 +82,39 @@ export async function syncBatch(cfg, DB, { limit = 40 } = {}) {
 
   const { results } = await DB.prepare('SELECT COUNT(*) AS n FROM contacts WHERE synced_at IS NULL').all()
   return { synced, remaining: results[0]?.n ?? 0 }
+}
+
+// Campos del contacto editables desde el panel.
+const EDITABLE = ['full_name', 'first_name', 'last_name', 'company', 'job', 'email', 'mobile', 'phone', 'website', 'city', 'country']
+
+/**
+ * Edita los datos de una persona en el directorio y, si ya tiene pase, empuja
+ * la actualización al wallet pass (AddToWallet). Devuelve el resultado del
+ * update del pase para poder confirmar que la API respondió OK.
+ */
+export async function updatePerson(cfg, DB, qrId, fields = {}) {
+  const sets = []
+  const vals = []
+  for (const k of EDITABLE) {
+    if (k in fields) {
+      sets.push(`${k}=?`)
+      const v = fields[k]
+      vals.push(v == null || v === '' ? null : String(v).slice(0, 200))
+    }
+  }
+  if (sets.length === 0) return { ok: false, error: 'Sin cambios' }
+  vals.push(String(qrId))
+  await DB.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE qr_id=?`).bind(...vals).run()
+
+  const contact = await DB.prepare('SELECT * FROM contacts WHERE qr_id=?').bind(String(qrId)).first()
+  if (!contact) return { ok: false, error: 'No encontrada' }
+
+  let pass = { skipped: true, reason: 'sin pase' }
+  if (contact.pass_id) {
+    const design = await getTemplateDesign(cfg)
+    pass = await updatePassForContact(cfg, contact, design)
+  }
+  return { ok: true, contact, pass }
 }
 
 /** Marca todo para re-sincronizar (vuelve a bajar las landings). */

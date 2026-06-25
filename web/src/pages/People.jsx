@@ -14,6 +14,8 @@ export default function People() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [selected, setSelected] = useState(() => new Set())
+  const [editing, setEditing] = useState(null)
+  const openEdit = (p) => setEditing(p)
 
   const load = () => api.listPeople().then(setRaw).catch((e) => setError(String(e.message || e)))
   useEffect(() => { load() }, [])
@@ -161,7 +163,7 @@ export default function People() {
           <thead>
             <tr>
               <th style={{ width: 30 }}><input type="checkbox" checked={allSel} onChange={toggleAll} /></th>
-              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th>
+              <th>Name</th><th>Group</th><th>Job</th><th>Email</th><th>Country</th><th>Pass</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -174,11 +176,90 @@ export default function People() {
                 <td className="muted">{p.email || '—'}</td>
                 <td className="muted">{p.country || '—'}</td>
                 <td>{p.pass_url ? <a href={p.pass_url} target="_blank" rel="noreferrer">✓ pass</a> : <span className="muted">—</span>}</td>
+                <td><button className="btn secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => openEdit(p)}>Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      {editing && (
+        <EditModal
+          person={editing}
+          onClose={() => setEditing(null)}
+          onSaved={async () => { setEditing(null); await load() }}
+        />
+      )}
     </>
+  )
+}
+
+const FIELDS = [
+  ['full_name', 'Full name'], ['company', 'Company'], ['job', 'Job title'],
+  ['email', 'Email'], ['mobile', 'Mobile'], ['phone', 'Phone'], ['country', 'Country'],
+]
+
+function EditModal({ person, onClose, onSaved }) {
+  const [form, setForm] = useState(() => {
+    const f = {}
+    for (const [k] of FIELDS) f[k] = person[k] || ''
+    return f
+  })
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const set = (k, v) => setForm((s) => ({ ...s, [k]: v }))
+
+  async function save() {
+    setBusy(true); setResult(null)
+    try {
+      const r = await api.updatePerson(person.qr_id, form)
+      setResult(r)
+      // Si no tiene pase, o el push salió OK, cerramos tras un momento.
+      if (r.ok && (r.pass?.skipped || r.pass?.ok)) {
+        setTimeout(onSaved, 900)
+      }
+    } catch (e) {
+      setResult({ ok: false, error: String(e.message || e) })
+    } finally { setBusy(false) }
+  }
+
+  const passMsg = !result ? null
+    : result.error ? `Error: ${result.error}`
+    : result.pass?.skipped ? 'Saved. (No wallet pass to update.)'
+    : result.pass?.ok ? 'Saved and pushed to the wallet pass ✓'
+    : 'Saved in the directory, but the wallet pass update failed — the AddToWallet update endpoint may differ. See details below.'
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,30,55,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 }}
+    >
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '100%', maxHeight: '90vh', overflow: 'auto' }}>
+        <h2 style={{ marginTop: 0, fontSize: 18 }}>Edit {person.full_name || 'person'}</h2>
+        <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>
+          {person.pass_url ? 'Changes are also pushed to the wallet pass.' : 'This person has no wallet pass yet — changes save to the directory.'}
+        </p>
+        {FIELDS.map(([k, label]) => (
+          <div className="field" key={k} style={{ marginBottom: 8 }}>
+            <label style={{ marginBottom: 4 }}>{label}</label>
+            <input value={form[k]} onChange={(e) => set(k, e.target.value)} />
+          </div>
+        ))}
+        {passMsg && (
+          <div className="card" style={{ marginTop: 6, borderColor: result?.ok && (result.pass?.ok || result.pass?.skipped) ? undefined : 'var(--red)' }}>
+            {passMsg}
+            {result && !result.pass?.ok && !result.pass?.skipped && result.pass?.attempts && (
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11, marginBottom: 0, marginTop: 8 }}>
+                {JSON.stringify(result.pass.attempts, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+          <button className="btn secondary" onClick={onClose} disabled={busy}>Close</button>
+          <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
+    </div>
   )
 }
