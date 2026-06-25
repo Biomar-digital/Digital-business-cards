@@ -48,7 +48,7 @@ export async function listHeroSettings(DB) {
 }
 
 /** Guarda la imagen para el scope indicado (sin re-pushear todavía). */
-export async function setHero(DB, { scope, group, qrId, image }) {
+export async function setHero(DB, { scope, group, qrId, qrIds, image }) {
   const img = image ? String(image).trim() : null
   if (scope === 'all') return setSetting(DB, KEY_ALL, img)
   if (scope === 'group') return setSetting(DB, keyGroup(group), img)
@@ -56,14 +56,28 @@ export async function setHero(DB, { scope, group, qrId, image }) {
     await DB.prepare('UPDATE contacts SET hero_image=? WHERE qr_id=?').bind(img, String(qrId)).run()
     return { ok: true }
   }
+  if (scope === 'selection') {
+    const ids = (qrIds || []).map(String)
+    for (const id of ids) {
+      await DB.prepare('UPDATE contacts SET hero_image=? WHERE qr_id=?').bind(img, id).run()
+    }
+    return { ok: true, count: ids.length }
+  }
   return { ok: false, error: 'scope inválido' }
 }
 
 /** Contactos CON pase afectados por un scope (para re-pushear). */
-export async function affectedContacts(DB, { scope, group, qrId }) {
+export async function affectedContacts(DB, { scope, group, qrId, qrIds }) {
   if (scope === 'person') {
     const c = await DB.prepare('SELECT * FROM contacts WHERE qr_id=? AND pass_id IS NOT NULL').bind(String(qrId)).first()
     return c ? [c] : []
+  }
+  if (scope === 'selection') {
+    const ids = (qrIds || []).map(String)
+    if (!ids.length) return []
+    const ph = ids.map(() => '?').join(',')
+    const { results } = await DB.prepare(`SELECT * FROM contacts WHERE pass_id IS NOT NULL AND qr_id IN (${ph})`).bind(...ids).all()
+    return results || []
   }
   const { results } = await DB.prepare('SELECT * FROM contacts WHERE pass_id IS NOT NULL').all()
   const list = results || []

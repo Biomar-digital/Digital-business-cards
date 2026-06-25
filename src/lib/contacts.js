@@ -130,9 +130,9 @@ export async function updatePerson(cfg, DB, qrId, fields = {}) {
  * de los pases existentes a re-pushear (los nuevos ya la toman al crearse). El
  * front trocea esa lista y llama a repushPasses por lote.
  */
-export async function setHeroImage(DB, { scope, group, qrId, image } = {}) {
-  await setHero(DB, { scope, group, qrId, image })
-  const affected = await affectedContacts(DB, { scope, group, qrId })
+export async function setHeroImage(DB, { scope, group, qrId, qrIds, image } = {}) {
+  await setHero(DB, { scope, group, qrId, qrIds, image })
+  const affected = await affectedContacts(DB, { scope, group, qrId, qrIds })
   return { ok: true, affected: affected.map((c) => String(c.qr_id)) }
 }
 

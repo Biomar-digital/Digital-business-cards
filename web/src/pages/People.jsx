@@ -42,6 +42,30 @@ export default function People() {
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
 
+  async function setSelectionImage() {
+    const ids = [...selected]
+    if (!ids.length) return
+    const image = window.prompt(
+      `Pass image URL for ${ids.length} selected ${ids.length === 1 ? 'person' : 'people'}.\nLeave empty to reset them to the group/default image.`,
+      '',
+    )
+    if (image === null) return // cancelado
+    setBusy(true); setMsg('Setting pass image…')
+    try {
+      const res = await api.setHero({ scope: 'selection', qrIds: ids, image: image.trim() })
+      const affected = res.affected || []
+      let updated = 0
+      for (let i = 0; i < affected.length; i += 20) {
+        const r = await api.repushHero(affected.slice(i, i + 20))
+        updated += r.updated
+        setMsg(`Updating existing passes… ${updated}/${affected.length}`)
+      }
+      await load()
+      setMsg(`Done. Image set for ${ids.length} people; ${updated}/${affected.length} existing passes updated.`)
+      setSelected(new Set())
+    } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
+  }
+
   async function createPasses(withEmail) {
     const ids = [...selected]
     if (!ids.length) return
@@ -151,6 +175,14 @@ export default function People() {
             title="Create the wallet pass and send the intro email right away"
           >
             Create pass + send email ({noPassSel})
+          </button>
+          <button
+            className="btn secondary"
+            disabled={busy || selected.size === 0}
+            onClick={setSelectionImage}
+            title="Set the wallet pass image for the selected people (campaign / special group)"
+          >
+            Set pass image ({selected.size})
           </button>
           <span className="muted" style={{ fontSize: 12 }}>
             To send emails to people who already have a pass, use the <b>Wallet passes</b> tab.
