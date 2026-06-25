@@ -85,6 +85,14 @@ const STATEMENTS = [
     value      TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // Imágenes subidas desde el panel (servidas en /img/:id para que AddToWallet
+  // las descargue al crear/actualizar el pase).
+  `CREATE TABLE IF NOT EXISTS images (
+    id           TEXT PRIMARY KEY,
+    content_type TEXT,
+    data         BLOB,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ]
 
 // Columnas añadidas después (ALTER no es idempotente: se ignora si ya existe).

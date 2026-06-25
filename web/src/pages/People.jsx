@@ -15,6 +15,7 @@ export default function People() {
   const [msg, setMsg] = useState('')
   const [selected, setSelected] = useState(() => new Set())
   const [editing, setEditing] = useState(null)
+  const [picking, setPicking] = useState(false)
   const openEdit = (p) => setEditing(p)
 
   const load = () => api.listPeople().then(setRaw).catch((e) => setError(String(e.message || e)))
@@ -42,17 +43,13 @@ export default function People() {
     } catch (e) { setMsg('Error: ' + (e.message || e)) } finally { setBusy(false) }
   }
 
-  async function setSelectionImage() {
+  async function applySelectionImage(image) {
     const ids = [...selected]
     if (!ids.length) return
-    const image = window.prompt(
-      `Pass image URL for ${ids.length} selected ${ids.length === 1 ? 'person' : 'people'}.\nLeave empty to reset them to the group/default image.`,
-      '',
-    )
-    if (image === null) return // cancelado
+    setPicking(false)
     setBusy(true); setMsg('Setting pass image…')
     try {
-      const res = await api.setHero({ scope: 'selection', qrIds: ids, image: image.trim() })
+      const res = await api.setHero({ scope: 'selection', qrIds: ids, image: (image || '').trim() })
       const affected = res.affected || []
       let updated = 0
       for (let i = 0; i < affected.length; i += 20) {
@@ -179,7 +176,7 @@ export default function People() {
           <button
             className="btn secondary"
             disabled={busy || selected.size === 0}
-            onClick={setSelectionImage}
+            onClick={() => setPicking(true)}
             title="Set the wallet pass image for the selected people (campaign / special group)"
           >
             Set pass image ({selected.size})
@@ -222,6 +219,14 @@ export default function People() {
           onSaved={async () => { setEditing(null); await load() }}
         />
       )}
+
+      {picking && (
+        <ImagePickModal
+          count={selected.size}
+          onClose={() => setPicking(false)}
+          onApply={applySelectionImage}
+        />
+      )}
     </>
   )
 }
@@ -231,6 +236,46 @@ const FIELDS = [
   ['email', 'Email'], ['mobile', 'Mobile'], ['phone', 'Phone'], ['country', 'Country'],
   ['hero_image', 'Pass image URL (overrides group/default)'],
 ]
+
+const overlay = { position: 'fixed', inset: 0, background: 'rgba(15,30,55,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 50 }
+
+// Modal para asignar la imagen de pase a la selección: subir archivo o pegar URL.
+function ImagePickModal({ count, onClose, onApply }) {
+  const [img, setImg] = useState('')
+  const [uploading, setUploading] = useState(false)
+
+  async function onFile(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setUploading(true)
+    try { const r = await api.uploadImage(f); setImg(r.url) }
+    catch (err) { alert(String(err.message || err)) }
+    finally { setUploading(false); e.target.value = '' }
+  }
+
+  return (
+    <div onClick={onClose} style={overlay}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '100%' }}>
+        <h2 style={{ marginTop: 0, fontSize: 18 }}>Pass image · {count} selected</h2>
+        <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>
+          Upload an image (or paste a URL). It's set for the selected people and pushed to any existing passes. Leave empty to reset to group/default.
+        </p>
+        {img && <img src={img} alt="" style={{ width: '100%', borderRadius: 8, marginBottom: 10, maxHeight: 160, objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none' }} />}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <label className="btn secondary" style={{ cursor: 'pointer', margin: 0 }}>
+            {uploading ? 'Uploading…' : 'Upload image'}
+            <input type="file" accept="image/*" hidden onChange={onFile} disabled={uploading} />
+          </label>
+          <input placeholder="…or paste a public URL" value={img} onChange={(e) => setImg(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+          <button className="btn secondary" onClick={onClose} disabled={uploading}>Cancel</button>
+          <button className="btn" onClick={() => onApply(img)} disabled={uploading}>Apply</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function EditModal({ person, onClose, onSaved }) {
   const [form, setForm] = useState(() => {

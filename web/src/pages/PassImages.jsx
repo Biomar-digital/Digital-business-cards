@@ -24,7 +24,18 @@ function Thumb({ url }) {
 
 function ScopeRow({ label, sub, value, busy, onApply }) {
   const [img, setImg] = useState(value || '')
+  const [uploading, setUploading] = useState(false)
   useEffect(() => { setImg(value || '') }, [value])
+
+  async function onFile(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setUploading(true)
+    try { const r = await api.uploadImage(f); setImg(r.url) }
+    catch (err) { alert(String(err.message || err)) }
+    finally { setUploading(false); e.target.value = '' }
+  }
+
   return (
     <div className="card" style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -32,16 +43,20 @@ function ScopeRow({ label, sub, value, busy, onApply }) {
           <b>{label}</b>
           {sub && <div className="muted" style={{ fontSize: 12 }}>{sub}</div>}
         </div>
-        <Thumb url={value} />
+        <Thumb url={img || value} />
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <label className="btn secondary" style={{ cursor: 'pointer', margin: 0 }}>
+          {uploading ? 'Uploading…' : 'Upload image'}
+          <input type="file" accept="image/*" hidden onChange={onFile} disabled={busy || uploading} />
+        </label>
         <input
-          placeholder="https://…/image.jpg  (leave empty to reset)"
+          placeholder="…or paste a public URL (empty = reset)"
           value={img}
           onChange={(e) => setImg(e.target.value)}
-          style={{ flex: 1, minWidth: 240 }}
+          style={{ flex: 1, minWidth: 220 }}
         />
-        <button className="btn" disabled={busy} onClick={() => onApply(img.trim())}>Save &amp; apply</button>
+        <button className="btn" disabled={busy || uploading} onClick={() => onApply(img.trim())}>Save &amp; apply</button>
       </div>
     </div>
   )

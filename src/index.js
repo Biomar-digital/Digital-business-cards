@@ -145,7 +145,6 @@ api.post('/people/:qrId/update', async (c) => {
 
 // ── Imágenes de pase (hero) por scope: campañas / grupos ──
 api.get('/hero', async (c) => c.json(await assets.listHeroSettings(c.env.DB)))
-// Asigna la imagen a un scope y devuelve los qr_ids a re-pushear.
 api.post('/hero/set', async (c) => {
   const b = await c.req.json().catch(() => ({}))
   return c.json(await contacts.setHeroImage(c.env.DB, b))
@@ -154,6 +153,21 @@ api.post('/hero/set', async (c) => {
 api.post('/hero/repush', async (c) => {
   const b = await c.req.json().catch(() => ({}))
   return c.json(await contacts.repushPasses(getConfig(c.env), c.env.DB, b.qrIds || []))
+})
+
+// Subida de imagen al panel: se guarda en D1 y se sirve pública en /img/:id,
+// para que AddToWallet la descargue al crear/actualizar el pase.
+api.post('/images', async (c) => {
+  const ct = c.req.header('content-type') || ''
+  if (!ct.startsWith('image/')) return c.json({ error: 'Solo se aceptan imágenes' }, 400)
+  const buf = await c.req.arrayBuffer()
+  if (buf.byteLength === 0) return c.json({ error: 'Archivo vacío' }, 400)
+  if (buf.byteLength > 700 * 1024) return c.json({ error: 'Imagen demasiado grande (máx 700 KB)' }, 413)
+  const id = nanoid(16)
+  await c.env.DB.prepare('INSERT INTO images (id, content_type, data) VALUES (?, ?, ?)')
+    .bind(id, ct, buf)
+    .run()
+  return c.json({ id, url: `${getConfig(c.env).publicUrl}/img/${id}` })
 })
 
 // ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──
@@ -197,6 +211,17 @@ export default {
       )
     }
     const html = (h, status = 200) => new Response(h, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
+
+    // Imagen subida al panel, servida pública (la descarga AddToWallet).
+    if (url.pathname.startsWith('/img/')) {
+      const id = decodeURIComponent(url.pathname.split('/')[2] || '')
+      await ensureSchema(env.DB)
+      const row = await env.DB.prepare('SELECT content_type, data FROM images WHERE id=?').bind(id).first()
+      if (!row || !row.data) return new Response('Not found', { status: 404 })
+      return new Response(row.data, {
+        headers: { 'content-type': row.content_type || 'image/jpeg', 'cache-control': 'public, max-age=31536000' },
+      })
+    }
 
     const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('x-forwarded-for') || null
 

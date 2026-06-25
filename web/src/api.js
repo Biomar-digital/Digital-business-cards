@@ -59,6 +59,18 @@ export const api = {
   setHero: (payload) => request('/hero/set', { method: 'POST', body: payload }),
   repushHero: (qrIds) => request('/hero/repush', { method: 'POST', body: { qrIds } }),
 
+  // Sube un File de imagen y devuelve { id, url }.
+  uploadImage: async (file) => {
+    const res = await fetch('/api/images', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'image/jpeg', 'x-admin-token': getToken() },
+      body: file,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+    return data
+  },
+
   createTestCard: () => request('/test/create-card', { method: 'POST' }),
   createExamplePass: () => request('/test/create-pass', { method: 'POST' }),
 
