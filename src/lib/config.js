@@ -7,7 +7,7 @@ export function getConfig(env) {
     providerMode,
     isLive: providerMode === 'live',
     adminToken: env.ADMIN_TOKEN || '',
-    publicUrl: env.PUBLIC_URL || 'https://igitalbusinesscards.marketing-70b.workers.dev',
+    publicUrl: env.PUBLIC_URL || 'https://biomardigitalbc.marketing-70b.workers.dev',
 
     addToWallet: {
       apiKey: env.ADDTOWALLET_API_KEY || '',

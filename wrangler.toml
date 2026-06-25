@@ -5,7 +5,7 @@
 # Build command (en Cloudflare):  npm run build
 # Deploy command (en Cloudflare):  npx wrangler deploy
 
-name = "igitalbusinesscards"
+name = "biomardigitalbc"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
