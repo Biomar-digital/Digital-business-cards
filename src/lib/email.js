@@ -87,7 +87,7 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
     <tr><td bgcolor="${headerBg}" style="background:${headerBg};padding:22px 32px">
       <table role="presentation" cellpadding="0" cellspacing="0"><tr>
         <td valign="middle">
-          <span style="color:#fff;font-size:30px;font-weight:800;letter-spacing:.2px;font-family:'Segoe UI',Arial,sans-serif">Bio<span style="color:${light}">Mar</span></span>
+          <img src="${logoUrl}" alt="BioMar" height="48" style="height:48px;display:block;border:0"/>
         </td>
         <td valign="middle">
           <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px;padding-left:18px">Digital Business Card</div>
