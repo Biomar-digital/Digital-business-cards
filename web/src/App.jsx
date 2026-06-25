@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { api, getToken, setToken } from './api.js'
+import Analytics from './pages/Analytics.jsx'
 import CardDetail from './pages/CardDetail.jsx'
 import Cards from './pages/Cards.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -116,6 +117,7 @@ export default function App() {
         </div>
         <nav className="nav">
           <NavLink to="/" end>Dashboard</NavLink>
+          <NavLink to="/analytics">Analytics</NavLink>
           <NavLink to="/cards">Cards</NavLink>
           <NavLink to="/passes">Wallet passes</NavLink>
           <NavLink to="/qr">QR codes</NavLink>
@@ -145,6 +147,7 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/cards" element={<Cards />} />
           <Route path="/cards/:id" element={<CardDetail />} />
           <Route path="/passes" element={<Passes />} />
