@@ -7,6 +7,7 @@ import Cards from './pages/Cards.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Groups from './pages/Groups.jsx'
 import NewCard from './pages/NewCard.jsx'
+import PassImages from './pages/PassImages.jsx'
 import Passes from './pages/Passes.jsx'
 import People from './pages/People.jsx'
 import Requests from './pages/Requests.jsx'
@@ -120,6 +121,7 @@ export default function App() {
           <NavLink to="/analytics">Analytics</NavLink>
           <NavLink to="/cards">Cards</NavLink>
           <NavLink to="/passes">Wallet passes</NavLink>
+          <NavLink to="/pass-images">Pass images</NavLink>
           <NavLink to="/qr">QR codes</NavLink>
           <NavLink to="/people">People</NavLink>
           <NavLink to="/templates">Templates</NavLink>
@@ -151,6 +153,7 @@ export default function App() {
           <Route path="/cards" element={<Cards />} />
           <Route path="/cards/:id" element={<CardDetail />} />
           <Route path="/passes" element={<Passes />} />
+          <Route path="/pass-images" element={<PassImages />} />
           <Route path="/qr" element={<QrCodes />} />
           <Route path="/people" element={<People />} />
           <Route path="/templates" element={<Templates />} />

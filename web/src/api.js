@@ -55,6 +55,10 @@ export const api = {
   linkPasses: () => request('/people/link-passes', { method: 'POST' }),
   updatePerson: (qrId, fields) => request(`/people/${encodeURIComponent(qrId)}/update`, { method: 'POST', body: { fields } }),
 
+  getHero: () => request('/hero'),
+  setHero: (payload) => request('/hero/set', { method: 'POST', body: payload }),
+  repushHero: (qrIds) => request('/hero/repush', { method: 'POST', body: { qrIds } }),
+
   createTestCard: () => request('/test/create-card', { method: 'POST' }),
   createExamplePass: () => request('/test/create-pass', { method: 'POST' }),
 

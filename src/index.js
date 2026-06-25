@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { nanoid } from 'nanoid'
+import * as assets from './lib/assets.js'
 import * as cards from './lib/cards.js'
 import { getConfig } from './lib/config.js'
 import * as contacts from './lib/contacts.js'
@@ -140,6 +141,19 @@ api.post('/people/link-passes', async (c) => c.json(await contacts.linkExistingP
 api.post('/people/:qrId/update', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   return c.json(await contacts.updatePerson(getConfig(c.env), c.env.DB, c.req.param('qrId'), body.fields || {}))
+})
+
+// ── Imágenes de pase (hero) por scope: campañas / grupos ──
+api.get('/hero', async (c) => c.json(await assets.listHeroSettings(c.env.DB)))
+// Asigna la imagen a un scope y devuelve los qr_ids a re-pushear.
+api.post('/hero/set', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  return c.json(await contacts.setHeroImage(c.env.DB, b))
+})
+// Re-pushea un lote de pases existentes (el front itera con la lista de set).
+api.post('/hero/repush', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  return c.json(await contacts.repushPasses(getConfig(c.env), c.env.DB, b.qrIds || []))
 })
 
 // ── PRUEBA: crear el QR (el wallet pass ya está confirmado) ──

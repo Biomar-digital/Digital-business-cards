@@ -197,6 +197,7 @@ export default function People() {
 const FIELDS = [
   ['full_name', 'Full name'], ['company', 'Company'], ['job', 'Job title'],
   ['email', 'Email'], ['mobile', 'Mobile'], ['phone', 'Phone'], ['country', 'Country'],
+  ['hero_image', 'Pass image URL (overrides group/default)'],
 ]
 
 function EditModal({ person, onClose, onSaved }) {

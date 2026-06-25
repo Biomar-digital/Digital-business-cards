@@ -79,6 +79,12 @@ const STATEMENTS = [
     status      TEXT NOT NULL DEFAULT 'open',
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // Ajustes clave/valor (ej. imagen de pase por defecto y por grupo).
+  `CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ]
 
 // Columnas añadidas después (ALTER no es idempotente: se ignora si ya existe).
@@ -91,6 +97,7 @@ const ALTERS = [
   "ALTER TABLE change_requests ADD COLUMN kind TEXT NOT NULL DEFAULT 'change'",
   'ALTER TABLE change_requests ADD COLUMN country TEXT',
   'ALTER TABLE change_requests ADD COLUMN ip TEXT',
+  'ALTER TABLE contacts ADD COLUMN hero_image TEXT', // imagen de pase específica de la persona
 ]
 
 export async function ensureSchema(DB) {

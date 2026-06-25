@@ -1,6 +1,14 @@
+import { affectedContacts, resolveHero, setHero } from './assets.js'
 import { createPassForContact, getTemplateDesign, listPasses, updatePassForContact } from './providers/addToWallet.js'
 import { sendIntroEmail } from './email.js'
 import { getVcardLanding, listQrCodes } from './providers/qrCode.js'
+
+// Mezcla la imagen (hero) resuelta para el contacto sobre el diseño base.
+async function designWithHero(DB, baseDesign, contact) {
+  const hero = await resolveHero(DB, contact)
+  if (!hero) return baseDesign
+  return { ...baseDesign, heroImage: hero, googleHeroImage: hero, appleHeroImage: hero }
+}
 
 // Directorio de personas: contactos extraídos de las vCards de qr-code-generator,
 // cacheados en D1. Dos fases para escalar a cientos sin agotar subrequests:
@@ -85,7 +93,7 @@ export async function syncBatch(cfg, DB, { limit = 40 } = {}) {
 }
 
 // Campos del contacto editables desde el panel.
-const EDITABLE = ['full_name', 'first_name', 'last_name', 'company', 'job', 'email', 'mobile', 'phone', 'website', 'city', 'country']
+const EDITABLE = ['full_name', 'first_name', 'last_name', 'company', 'job', 'email', 'mobile', 'phone', 'website', 'city', 'country', 'hero_image']
 
 /**
  * Edita los datos de una persona en el directorio y, si ya tiene pase, empuja
@@ -111,10 +119,45 @@ export async function updatePerson(cfg, DB, qrId, fields = {}) {
 
   let pass = { skipped: true, reason: 'sin pase' }
   if (contact.pass_id) {
-    const design = await getTemplateDesign(cfg)
+    const design = await designWithHero(DB, await getTemplateDesign(cfg), contact)
     pass = await updatePassForContact(cfg, contact, design)
   }
   return { ok: true, contact, pass }
+}
+
+/**
+ * Asigna la imagen de pase a un scope (all/group/person) y devuelve los qr_ids
+ * de los pases existentes a re-pushear (los nuevos ya la toman al crearse). El
+ * front trocea esa lista y llama a repushPasses por lote.
+ */
+export async function setHeroImage(DB, { scope, group, qrId, image } = {}) {
+  await setHero(DB, { scope, group, qrId, image })
+  const affected = await affectedContacts(DB, { scope, group, qrId })
+  return { ok: true, affected: affected.map((c) => String(c.qr_id)) }
+}
+
+/** Re-pushea (actualiza) los pases de un lote de qr_ids con su hero resuelto. */
+export async function repushPasses(cfg, DB, qrIds = []) {
+  const ids = (qrIds || []).map(String).slice(0, 25)
+  if (!ids.length) return { updated: 0, errors: [] }
+  const ph = ids.map(() => '?').join(',')
+  const { results: rows } = await DB.prepare(
+    `SELECT * FROM contacts WHERE qr_id IN (${ph}) AND pass_id IS NOT NULL`,
+  ).bind(...ids).all()
+  const base = await getTemplateDesign(cfg)
+  let updated = 0
+  const errors = []
+  for (const c of rows) {
+    try {
+      const design = await designWithHero(DB, base, c)
+      const r = await updatePassForContact(cfg, c, design)
+      if (r.ok) updated++
+      else errors.push({ name: c.full_name, attempts: r.attempts })
+    } catch (e) {
+      errors.push({ name: c.full_name, error: String(e.message ?? e).slice(0, 160) })
+    }
+  }
+  return { updated, errors: errors.slice(0, 3) }
 }
 
 /** Marca todo para re-sincronizar (vuelve a bajar las landings). */
@@ -227,12 +270,13 @@ export async function createPassesBatch(cfg, DB, qrIds, { limit = 25, sendEmail 
     .bind(...ids, limit)
     .all()
 
-  const design = await getTemplateDesign(cfg)
+  const baseDesign = await getTemplateDesign(cfg)
   let created = 0
   let emailed = 0
   const errors = []
   for (const c of rows) {
     try {
+      const design = await designWithHero(DB, baseDesign, c)
       const r = await createPassForContact(cfg, c, design)
       await DB.prepare("UPDATE contacts SET pass_id=?, pass_url=?, pass_synced_at=datetime('now') WHERE qr_id=?")
         .bind(r.passId, r.passUrl, String(c.qr_id))
