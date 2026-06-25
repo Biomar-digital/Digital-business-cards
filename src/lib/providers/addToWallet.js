@@ -375,7 +375,7 @@ export async function createExamplePass(cfg) {
     appleFontColor: design.appleFontColor || '#ffffff',
     barcodeType: 'QR_CODE',
     barcodeValue: 'https://www.biomar.com',
-    barcodeAltText: 'Scan to save my contact',
+    barcodeAltText: 'Scan to add contact',
     textModulesData: [
       { id: 'r1start', header: 'Email', body: 'alex.johansen@biomar.com' },
       { id: 'r1end', header: 'Phone', body: '+45 25 50 50 10' },

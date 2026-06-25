@@ -68,11 +68,11 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
     </td></tr></table>
   </div>`
 
-  const benefit = (glyph, title, text) => `
+  const benefit = (title, text) => `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
       <td width="52" valign="top">
         <table role="presentation" cellpadding="0" cellspacing="0" width="40" bgcolor="${blue}" style="width:40px;background:${blue};border-radius:10px">
-          <tr><td align="center" valign="middle" height="40" style="width:40px;height:40px;text-align:center;color:#ffffff;font-size:20px;font-weight:700;font-family:'Segoe UI Symbol','Segoe UI',Arial,sans-serif;line-height:40px">${glyph}</td></tr>
+          <tr><td align="center" valign="middle" height="40" style="width:40px;height:40px;text-align:center;color:#ffffff;font-size:20px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;line-height:40px">&#10003;</td></tr>
         </table>
       </td>
       <td valign="top" style="padding-left:8px">
@@ -119,11 +119,11 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
 
     <tr><td style="padding:22px 32px 4px">
       ${sectionTitle('What you get')}
-      ${benefit('&#10065;', 'Apple &amp; Google Wallet', 'Save it to your phone’s Wallet — no extra app, no account needed.')}
-      ${benefit('&#8635;', 'Always up to date', 'Job title, contact details or QR can be updated centrally — no reprinting.')}
-      ${benefit('&#8599;', 'Share in a tap', 'Show your QR and the other person saves your contact in the moment.')}
-      ${benefit('&#9842;', 'Sustainable', 'Zero paper and ink — supporting BioMar’s environmental commitments.')}
-      ${benefit('&#9873;', 'Never caught without a card', 'Going to an event? Your card is always with you, on your phone.')}
+      ${benefit('Apple &amp; Google Wallet', 'Save it to your phone’s Wallet — no extra app, no account needed.')}
+      ${benefit('Always up to date', 'Job title, contact details or QR can be updated centrally — no reprinting.')}
+      ${benefit('Share in a tap', 'Show your QR and the other person saves your contact in the moment.')}
+      ${benefit('Sustainable', 'Zero paper and ink — supporting BioMar’s environmental commitments.')}
+      ${benefit('Never caught without a card', 'Going to an event? Your card is always with you, on your phone.')}
     </td></tr>
 
     <tr><td align="center" style="padding:14px 32px 6px">
