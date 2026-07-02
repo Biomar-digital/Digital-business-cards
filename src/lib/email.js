@@ -7,6 +7,22 @@ function parseSender(from) {
   return { email: String(from).trim() }
 }
 
+// Botón "a prueba de balas". Outlook (motor Word) ignora padding y border-radius
+// en <a>, por eso el botón se veía pegado al texto. Aquí Outlook dibuja el botón
+// con una figura VML (v:roundrect) y el resto de clientes usan un <a> normal;
+// ambos quedan con el mismo aspecto. `label` debe venir ya escapado si trae &.
+function ctaButton({ href, label, fill = '#1f3e77', text = '#ffffff', stroke, width = 220, height = 48, fontSize = 16 }) {
+  const strokeColor = stroke || fill
+  return `<!--[if mso]>
+  <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:${height}px;v-text-anchor:middle;width:${width}px;" arcsize="18%" strokecolor="${strokeColor}" fillcolor="${fill}">
+    <w:anchorlock/>
+    <center style="color:${text};font-family:'Segoe UI',Arial,sans-serif;font-size:${fontSize}px;font-weight:bold;">${label}</center>
+  </v:roundrect>
+  <![endif]--><!--[if !mso]><!-->
+  <a href="${href}" style="background-color:${fill};border:1.5px solid ${strokeColor};border-radius:10px;color:${text};display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:${fontSize}px;font-weight:700;line-height:${height - 3}px;text-align:center;text-decoration:none;width:${width}px">${label}</a>
+  <!--<![endif]-->`
+}
+
 /**
  * Envía el pase al contacto.
  *  - EMAIL_PROVIDER=brevo        -> correo propio vía API HTTP de Brevo
@@ -127,7 +143,7 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
     </td></tr>
 
     <tr><td align="center" style="padding:14px 32px 6px">
-      <a href="${passUrl}" style="display:inline-block;background:${blue};color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 34px;border-radius:10px">Add to your Wallet</a>
+      ${ctaButton({ href: passUrl, label: 'Add to your Wallet', fill: blue, width: 220 })}
       <div style="color:#9fb3c8;font-size:12px;margin-top:8px">Open this email on your phone for best results</div>
     </td></tr>
 
@@ -147,7 +163,7 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
           Take a moment to review your card and your QR / vCard — name, job title, email and phone.
           If anything needs fixing, request a change and the team will update it.
         </p>
-        ${reviewUrl ? `<a href="${reviewUrl}" style="display:inline-block;background:#fff;border:1.5px solid ${blue};color:${blue};text-decoration:none;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px">Review my info &amp; request changes</a>` : ''}
+        ${reviewUrl ? ctaButton({ href: reviewUrl, label: 'Review my info &amp; request changes', fill: '#ffffff', text: blue, stroke: blue, width: 300, height: 44, fontSize: 14 }) : ''}
       </div>
     </td></tr>
 
@@ -196,7 +212,7 @@ export function inviteEmailHtml({ name, requestUrl, base }) {
         </td></tr>
 
         <tr><td align="center" style="padding:22px 32px 6px">
-          <a href="${requestUrl}" style="display:inline-block;background:${blue};color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 34px;border-radius:10px">Create my card</a>
+          ${ctaButton({ href: requestUrl, label: 'Create my card', fill: blue, width: 220 })}
         </td></tr>
 
         <tr><td style="padding:18px 32px 6px">
