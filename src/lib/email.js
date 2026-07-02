@@ -158,6 +158,92 @@ export function introEmailHtml({ name, passUrl, reviewUrl, base }) {
   `)
 }
 
+// Email de INVITACIÓN al sistema. No trae un pase todavía: invita a la persona
+// a llenar sus datos en el formulario público (/request). Al enviarse, su
+// solicitud caerá en el panel como "pendiente de crear".
+export function inviteEmailHtml({ name, requestUrl, base }) {
+  const blue = '#1f3e77'
+  const headerBg = '#1c4077' // navy exacto del logo
+  const ink = '#2d3748'
+  const logoUrl = `${base}/biomar-logo.png`
+  const sectionTitle = (t) => `<div style="font-size:13px;font-weight:700;color:${blue};text-transform:uppercase;letter-spacing:.6px;margin:6px 0 12px">${t}</div>`
+
+  return `
+  <div style="background:#eef3f8;padding:24px 0;font-family:'Segoe UI',Arial,sans-serif">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(22,38,61,.08)">
+
+        <tr><td bgcolor="${headerBg}" style="background:${headerBg};padding:22px 32px">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td valign="middle"><img src="${logoUrl}" alt="BioMar" height="48" style="height:48px;display:block;border:0"/></td>
+            <td valign="middle"><div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:.3px;padding-left:18px">Digital Business Card</div></td>
+          </tr></table>
+        </td></tr>
+
+        <tr><td bgcolor="${headerBg}" style="padding:0;font-size:0;line-height:0;background:${headerBg}">
+          <img src="${base}/email-banner.jpg" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"/>
+        </td></tr>
+
+        <tr><td style="padding:30px 32px 6px">
+          <h1 style="margin:0 0 14px;font-size:22px;color:#16263d">Hi ${name || 'there'},</h1>
+          <p style="margin:0 0 14px;color:${ink};font-size:15px;line-height:1.65">
+            You've been invited to get your <b>BioMar Digital Business Card</b> — your professional
+            identity in your phone's Wallet, with a QR others can scan to save your contact instantly.
+          </p>
+          <p style="margin:0;color:${ink};font-size:15px;line-height:1.65">
+            To get started, just fill in your details. The BioMar team will create your card and email it to you.
+          </p>
+        </td></tr>
+
+        <tr><td align="center" style="padding:22px 32px 6px">
+          <a href="${requestUrl}" style="display:inline-block;background:${blue};color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 34px;border-radius:10px">Create my card</a>
+        </td></tr>
+
+        <tr><td style="padding:18px 32px 6px">
+          ${sectionTitle('How it works')}
+          <ol style="margin:0;padding-left:18px;color:${ink};font-size:14px;line-height:1.8">
+            <li>Click <b>Create my card</b> and fill in your details (2 minutes).</li>
+            <li>Our team creates your Wallet card + QR / vCard.</li>
+            <li>You receive it by email, ready to add to your phone.</li>
+          </ol>
+        </td></tr>
+
+        <tr><td style="padding:14px 32px 24px">
+          <p style="margin:0;color:#647890;font-size:13px;line-height:1.6">
+            Button not working? Copy this link into your browser:<br/>
+            <a href="${requestUrl}" style="color:${blue};word-break:break-all">${requestUrl}</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="background:#f5f9fd;padding:20px 32px;border-top:1px solid #e2e8f0">
+          <div style="color:#647890;font-size:13px;font-weight:600">Powered by Partnership. Driven by Innovation.</div>
+          <div style="color:#9fb3c8;font-size:11px;margin-top:4px">BioMar — Digital Business Cards</div>
+        </td></tr>
+
+      </table>
+    </td></tr></table>
+  </div>`
+}
+
+/** Envía el email de invitación a una persona (vía Brevo). */
+export async function sendInviteEmail(cfg, { name, email, requestUrl }) {
+  if (!email) throw new Error('Sin email de destino')
+  if (!cfg.email.brevoApiKey) throw new Error('Falta BREVO_API_KEY')
+  const url = requestUrl || `${cfg.publicUrl}/request`
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': cfg.email.brevoApiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: parseSender(cfg.email.from),
+      to: [{ email, name: name || undefined }],
+      subject: "You're invited: create your BioMar Digital Business Card",
+      htmlContent: inviteEmailHtml({ name, requestUrl: url, base: cfg.publicUrl }),
+    }),
+  })
+  if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 300)}`)
+  return { channel: 'brevo' }
+}
+
 /**
  * Avisa al admin (notifyTo) cuando entra una solicitud pública: nueva tarjeta
  * o cambio. No rompe el flujo público si el email falla (se captura fuera).

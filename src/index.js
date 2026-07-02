@@ -7,7 +7,7 @@ import { getConfig } from './lib/config.js'
 import * as contacts from './lib/contacts.js'
 import { ensureSchema } from './lib/db.js'
 import { listUnifiedGroups } from './lib/groups.js'
-import { introEmailHtml, sendAdminNotification } from './lib/email.js'
+import { introEmailHtml, sendAdminNotification, sendInviteEmail } from './lib/email.js'
 import * as review from './lib/review.js'
 import * as wallet from './lib/providers/addToWallet.js'
 import * as qr from './lib/providers/qrCode.js'
@@ -143,6 +143,31 @@ api.post('/people/:qrId/update', async (c) => {
   return c.json(await contacts.updatePerson(getConfig(c.env), c.env.DB, c.req.param('qrId'), body.fields || {}))
 })
 
+// ── Invitaciones: envía el email que lleva al formulario público /request.
+// recipients = [{ email, name? }]; company (opcional) pre-selecciona el grupo.
+api.post('/invite', async (c) => {
+  const cfg = getConfig(c.env)
+  const body = await c.req.json().catch(() => ({}))
+  const recipients = Array.isArray(body.recipients) ? body.recipients : []
+  const company = body.company ? String(body.company).trim() : ''
+  const requestUrl = company
+    ? `${cfg.publicUrl}/request?company=${encodeURIComponent(company)}`
+    : `${cfg.publicUrl}/request`
+  let sent = 0
+  const errors = []
+  for (const r of recipients) {
+    const email = String(r?.email || '').trim()
+    if (!review.validEmail(email)) { errors.push({ email, error: 'Invalid email' }); continue }
+    try {
+      await sendInviteEmail(cfg, { name: r?.name, email, requestUrl })
+      sent++
+    } catch (e) {
+      errors.push({ email, error: String(e.message ?? e) })
+    }
+  }
+  return c.json({ sent, total: recipients.length, errors })
+})
+
 // ── Imágenes de pase (hero) por scope: campañas / grupos ──
 api.get('/hero', async (c) => c.json(await assets.listHeroSettings(c.env.DB)))
 api.post('/hero/set', async (c) => {
@@ -245,7 +270,13 @@ export default {
         } catch (e) { console.error('notify failed', e) }
         return html(review.thankYouHtml('new'))
       }
-      return html(review.requestCardPageHtml({}, '', groups))
+      // Prefill desde el link de invitación (?company=…&name=…&email=…).
+      const prefill = {
+        company: url.searchParams.get('company') || '',
+        full_name: url.searchParams.get('name') || '',
+        email: url.searchParams.get('email') || '',
+      }
+      return html(review.requestCardPageHtml(prefill, '', groups))
     }
 
     // Página pública de revisión / solicitud de cambios.

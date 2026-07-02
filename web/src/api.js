@@ -74,6 +74,8 @@ export const api = {
   createTestCard: () => request('/test/create-card', { method: 'POST' }),
   createExamplePass: () => request('/test/create-pass', { method: 'POST' }),
 
+  sendInvites: (recipients, company) => request('/invite', { method: 'POST', body: { recipients, company } }),
+
   listRequests: () => request('/requests'),
   resolveRequest: (id) => request(`/requests/${id}/status`, { method: 'POST', body: { status: 'done' } }),
 }

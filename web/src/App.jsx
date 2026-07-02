@@ -6,6 +6,7 @@ import CardDetail from './pages/CardDetail.jsx'
 import Cards from './pages/Cards.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Groups from './pages/Groups.jsx'
+import Invite from './pages/Invite.jsx'
 import NewCard from './pages/NewCard.jsx'
 import PassImages from './pages/PassImages.jsx'
 import Passes from './pages/Passes.jsx'
@@ -124,6 +125,7 @@ export default function App() {
           <NavLink to="/pass-images">Pass images</NavLink>
           <NavLink to="/qr">QR codes</NavLink>
           <NavLink to="/people">People</NavLink>
+          <NavLink to="/invite">Invite</NavLink>
           <NavLink to="/templates">Templates</NavLink>
           <NavLink to="/requests" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>Notifications</span>
@@ -156,6 +158,7 @@ export default function App() {
           <Route path="/pass-images" element={<PassImages />} />
           <Route path="/qr" element={<QrCodes />} />
           <Route path="/people" element={<People />} />
+          <Route path="/invite" element={<Invite />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/groups" element={<Groups />} />
